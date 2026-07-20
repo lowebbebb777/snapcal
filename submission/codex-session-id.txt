@@ -1,0 +1,5 @@
+Primary Codex build thread session ID:
+019f6aa0-5d52-7a61-97f5-fcc99675d809
+
+Source: the current SnapCal thread record in the local Codex state database.
+Before Devpost submission, the owner can run /feedback in this same thread to verify that the displayed ID matches.

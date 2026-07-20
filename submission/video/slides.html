@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SnapCal demo slides</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #071311; color: #edf7f5; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    .slide { display: none; width: 100vw; height: 100vh; padding: 92px 112px; position: relative; }
+    .slide.active { display: flex; flex-direction: column; justify-content: center; }
+    .slide::before { content: ""; position: absolute; width: 640px; height: 640px; border-radius: 50%; right: -210px; top: -270px; background: #54f0ba; opacity: .07; }
+    .slide::after { content: ""; position: absolute; width: 430px; height: 430px; border-radius: 50%; left: -190px; bottom: -250px; background: #54f0ba; opacity: .05; }
+    .eyebrow { color: #54f0ba; font-size: 26px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; }
+    h1 { max-width: 1540px; margin: 30px 0 28px; font-size: 96px; line-height: 1.02; letter-spacing: -.05em; }
+    h2 { max-width: 1560px; margin: 26px 0 50px; font-size: 70px; line-height: 1.08; letter-spacing: -.035em; }
+    .lead { max-width: 1370px; margin: 0; color: #a5bcb7; font-size: 36px; line-height: 1.45; }
+    .pill { display: inline-flex; align-items: center; gap: 14px; width: max-content; margin-top: 44px; padding: 16px 24px; border: 1px solid #2e6657; border-radius: 999px; color: #54f0ba; font-size: 25px; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 10px; }
+    .card { min-height: 260px; padding: 36px; border: 1px solid #285b4e; border-radius: 30px; background: #10241f; }
+    .card b { display: block; color: #54f0ba; font-size: 27px; margin-bottom: 20px; }
+    .card span { color: #edf7f5; font-size: 31px; line-height: 1.35; }
+    .proof { display: grid; grid-template-columns: 1.15fr .85fr; gap: 50px; align-items: center; }
+    .terminal { padding: 34px 38px; border: 1px solid #2a5b4f; border-radius: 28px; background: #04100d; color: #c9ded9; font: 27px/1.55 ui-monospace, SFMono-Regular, monospace; white-space: pre-wrap; box-shadow: 0 30px 90px #0007; }
+    .ok { color: #54f0ba; font-weight: 800; }
+    .footer { position: absolute; left: 112px; bottom: 60px; color: #719189; font-size: 22px; letter-spacing: .08em; }
+    .accent { color: #54f0ba; }
+  </style>
+</head>
+<body>
+  <section class="slide" data-slide="title">
+    <div class="eyebrow">OpenAI Build Week · Apps for Your Life</div>
+    <h1>SnapCal</h1>
+    <p class="lead">Turn one screenshot into a safe calendar event—entirely on device.</p>
+    <div class="pill">ANDROID · JAPANESE OCR · NO CLOUD RUNTIME</div>
+    <div class="footer">BUILT WITH CODEX + GPT-5.6</div>
+  </section>
+
+  <section class="slide" data-slide="problem">
+    <div class="eyebrow">The tiny habit we fixed</div>
+    <h2>Screenshots save the announcement.<br><span class="accent">They do not save the event.</span></h2>
+    <div class="grid">
+      <div class="card"><b>01 · CAPTURE</b><span>Share one image or explicitly start screenshot monitoring.</span></div>
+      <div class="card"><b>02 · UNDERSTAND</b><span>Bundled Japanese OCR and deterministic Kotlin rules run locally.</span></div>
+      <div class="card"><b>03 · ACT SAFELY</b><span>Add one clear future event with reminder and Undo—or do nothing.</span></div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="privacy">
+    <div class="proof">
+      <div>
+        <div class="eyebrow">Privacy is a build invariant</div>
+        <h2>No screenshot upload.<br>No cloud analysis.</h2>
+        <p class="lead">Images and full OCR text are never persisted. Ambiguous evidence is rejected instead of guessed.</p>
+      </div>
+      <div class="terminal">$ ./gradlew releaseGate
+
+demoRelease ........ <span class="ok">PASS</span>
+productionRelease .. <span class="ok">PASS</span>
+
+INTERNET ........... <span class="ok">ABSENT</span>
+ACCESS_NETWORK_STATE <span class="ok">ABSENT</span>
+
+APK signature ...... <span class="ok">VERIFIED</span>
+SHA-256 ............ <span class="ok">VERIFIED</span></div>
+    </div>
+    <div class="footer">ON-DEVICE ML KIT OCR · ANDROID CALENDARCONTRACT</div>
+  </section>
+
+  <section class="slide" data-slide="codex">
+    <div class="eyebrow">Built with Codex + GPT-5.6</div>
+    <h2>AI accelerated the build.<br><span class="accent">It does not read your screenshots.</span></h2>
+    <div class="grid">
+      <div class="card"><b>ARCHITECTURE</b><span>Two capture paths, one local processing runtime, one recoverable state machine.</span></div>
+      <div class="card"><b>SAFETY</b><span>Fail-closed ambiguity rules, duplicate guards, operation tokens, safe Undo.</span></div>
+      <div class="card"><b>VERIFICATION</b><span>Adversarial tests, privacy gates, final APK inspection, review convergence.</span></div>
+    </div>
+    <div class="footer">SNAPCAL · MAKE THE SCREENSHOT USEFUL</div>
+  </section>
+  <script>
+    const id = new URLSearchParams(location.search).get('slide') || 'title';
+    document.querySelector(`[data-slide="${id}"]`)?.classList.add('active');
+  </script>
+</body>
+</html>

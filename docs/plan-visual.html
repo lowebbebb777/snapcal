@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>SnapCal — Visual Plan</title>
+  <style>
+    :root {
+      --ink: #edf7f5;
+      --muted: #9fb9b5;
+      --paper: #071311;
+      --panel: #0d1e1a;
+      --panel-2: #112823;
+      --line: rgba(171, 225, 215, .17);
+      --mint: #54f0ba;
+      --cyan: #66d8ff;
+      --lime: #d4ff74;
+      --amber: #ffc966;
+      --red: #ff7f86;
+      --shadow: 0 26px 80px rgba(0, 0, 0, .34);
+      --radius: 26px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 16% -10%, rgba(84, 240, 186, .15), transparent 33rem),
+        radial-gradient(circle at 86% 18%, rgba(102, 216, 255, .09), transparent 30rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7, 19, 17, .82);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar .wrap {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      color: #04100d;
+      background: linear-gradient(145deg, var(--lime), var(--mint));
+      box-shadow: 0 0 26px rgba(84, 240, 186, .22);
+    }
+
+    nav { display: flex; gap: 20px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    nav a { text-decoration: none; }
+    nav a:hover { color: var(--mint); }
+
+    .hero {
+      min-height: 760px;
+      padding: 90px 0 70px;
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      align-items: center;
+      gap: 74px;
+    }
+
+    .hero-copy { min-width: 0; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border: 1px solid rgba(84, 240, 186, .28);
+      border-radius: 999px;
+      color: var(--mint);
+      background: rgba(84, 240, 186, .06);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 14px var(--mint); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      margin: 22px 0 20px;
+      max-width: 700px;
+      font-size: clamp(48px, 6.8vw, 88px);
+      line-height: .98;
+      letter-spacing: -.065em;
+    }
+    .gradient-text {
+      display: block;
+      color: transparent;
+      background: linear-gradient(95deg, var(--mint), var(--cyan));
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+    .lead { width: 100%; max-width: 650px; overflow-wrap: anywhere; color: #c6d9d5; font-size: clamp(17px, 2vw, 22px); }
+    .hero-pills { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 28px; }
+    .pill { padding: 9px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: #c5dcd7; font-size: 13px; font-weight: 700; }
+    .pill strong { color: var(--mint); }
+
+    .phone-stage { position: relative; min-height: 615px; display: grid; place-items: center; }
+    .halo { position: absolute; width: min(470px, 100%); height: auto; aspect-ratio: 1; border: 1px solid rgba(84, 240, 186, .14); border-radius: 50%; }
+    .halo::before, .halo::after { content: ""; position: absolute; inset: 54px; border: inherit; border-radius: inherit; }
+    .halo::after { inset: 112px; }
+    .phone {
+      position: relative;
+      width: min(340px, 82vw);
+      height: 610px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 48px;
+      background: #020706;
+      box-shadow: var(--shadow), inset 0 0 0 2px rgba(255,255,255,.025);
+      transform: rotate(2deg);
+    }
+    .screen { height: 100%; overflow: hidden; border-radius: 37px; background: linear-gradient(180deg, #153c3b, #f0f5f2 36%, #e5eeea); color: #14211f; }
+    .status { height: 36px; display: flex; justify-content: space-between; padding: 10px 20px 0; color: white; font-size: 11px; font-weight: 800; }
+    .chat-head { padding: 12px 17px 19px; color: white; font-weight: 800; }
+    .chat { padding: 18px 13px; display: grid; gap: 13px; }
+    .msg { max-width: 83%; padding: 13px 15px; border-radius: 18px; background: white; box-shadow: 0 5px 15px rgba(19,45,39,.08); font-size: 13px; line-height: 1.45; }
+    .msg.right { margin-left: auto; background: #bdf7c1; }
+    .event-card { border-left: 4px solid #11b87e; }
+    .event-card b { display: block; font-size: 15px; }
+    .event-card small { color: #60736e; }
+    .bubble {
+      position: absolute;
+      right: -23px;
+      top: 48%;
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border: 4px solid rgba(255,255,255,.9);
+      border-radius: 50%;
+      color: #042118;
+      background: linear-gradient(145deg, var(--lime), var(--mint));
+      box-shadow: 0 12px 30px rgba(4, 32, 24, .42), 0 0 0 7px rgba(84,240,186,.14);
+      font-weight: 1000;
+      transform: rotate(-2deg);
+    }
+    .bubble-tag { position: absolute; right: -136px; top: calc(48% + 70px); width: 158px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 13px; color: #cde1dd; background: rgba(13,30,26,.95); font-size: 11px; box-shadow: var(--shadow); }
+
+    section { padding: 86px 0; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 34px; margin-bottom: 38px; }
+    .kicker { margin-bottom: 10px; color: var(--mint); font-size: 12px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { margin-bottom: 0; font-size: clamp(33px, 4.4vw, 58px); line-height: 1.05; letter-spacing: -.045em; }
+    .section-note { max-width: 440px; margin: 0; color: var(--muted); }
+
+    .device-boundary {
+      position: relative;
+      padding: 32px;
+      border: 1px solid rgba(84, 240, 186, .32);
+      border-radius: 32px;
+      background: linear-gradient(150deg, rgba(84,240,186,.06), rgba(13,30,26,.75));
+      box-shadow: var(--shadow);
+    }
+    .boundary-label { position: absolute; top: -14px; left: 28px; padding: 5px 12px; border-radius: 999px; color: #062218; background: var(--mint); font-size: 12px; font-weight: 900; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); align-items: stretch; gap: 26px; }
+    .flow-step { position: relative; min-height: 174px; padding: 22px 18px; border: 1px solid var(--line); border-radius: 19px; background: rgba(4,14,12,.74); }
+    .flow-step:not(:last-child)::after { content: "›"; position: absolute; right: -20px; top: 48%; color: var(--mint); font-size: 34px; line-height: 1; }
+    .step-no { color: var(--mint); font-size: 11px; font-weight: 900; letter-spacing: .1em; }
+    .flow-step h3 { margin: 17px 0 7px; font-size: 17px; line-height: 1.2; }
+    .flow-step p { margin-bottom: 0; color: var(--muted); font-size: 12px; }
+    .cloud-ban { margin-top: 22px; padding: 17px 20px; display: flex; align-items: center; gap: 13px; border: 1px dashed rgba(255,127,134,.35); border-radius: 16px; color: #ffc5c8; background: rgba(255,127,134,.045); font-size: 13px; }
+    .ban { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border: 2px solid var(--red); border-radius: 50%; font-weight: 1000; }
+
+    .profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
+    .profile-tabs { display: grid; gap: 10px; align-content: start; }
+    .profile-tab { width: 100%; padding: 19px; border: 1px solid var(--line); border-radius: 18px; color: var(--muted); background: transparent; text-align: left; cursor: pointer; transition: .2s ease; }
+    .profile-tab strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: 16px; }
+    .profile-tab.active { border-color: rgba(84,240,186,.55); color: #cfe2de; background: rgba(84,240,186,.09); transform: translateX(4px); }
+    .profile-card { min-height: 385px; padding: 32px; border: 1px solid var(--line); border-radius: 26px; background: var(--panel); box-shadow: var(--shadow); }
+    .profile-card[hidden] { display: none; }
+    .profile-title { display: flex; justify-content: space-between; align-items: start; gap: 20px; }
+    .profile-title h3 { margin-bottom: 6px; font-size: 28px; }
+    .badge { padding: 7px 10px; border-radius: 999px; color: #062118; background: var(--mint); font-size: 11px; font-weight: 900; white-space: nowrap; }
+    .badge.fallback { color: #202205; background: var(--lime); }
+    .mini-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 28px 0; }
+    .mini-node { min-height: 94px; padding: 15px; border-radius: 15px; background: #081713; border: 1px solid var(--line); font-size: 12px; }
+    .mini-node b { display: block; margin-bottom: 8px; color: var(--mint); }
+    .permission-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .permission { padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 11px; }
+    .permission.no { color: #b8dfd6; border-color: rgba(84,240,186,.22); }
+
+    .gate-grid { display: grid; grid-template-columns: 1fr .82fr; gap: 28px; }
+    .checklist, .outcomes { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .checklist h3, .outcomes h3 { font-size: 21px; }
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .check { display: flex; gap: 11px; padding: 13px; border-radius: 14px; background: #081713; color: #c6d8d4; font-size: 13px; }
+    .tick { width: 22px; height: 22px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid rgba(84,240,186,.45); border-radius: 7px; color: var(--mint); font-size: 12px; font-weight: 1000; }
+    .result { padding: 20px; border-radius: 17px; }
+    .result + .result { margin-top: 14px; }
+    .result.safe { border: 1px solid rgba(84,240,186,.35); background: rgba(84,240,186,.07); }
+    .result.stop { border: 1px solid rgba(255,201,102,.25); background: rgba(255,201,102,.06); }
+    .result b { display: block; margin-bottom: 5px; }
+    .result.safe b { color: var(--mint); }
+    .result.stop b { color: var(--amber); }
+    .result p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .privacy-board { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .privacy-card { padding: 28px; border-radius: 24px; border: 1px solid var(--line); background: var(--panel); }
+    .privacy-card.keep { border-color: rgba(84,240,186,.25); }
+    .privacy-card.drop { border-color: rgba(255,127,134,.2); }
+    .privacy-card h3 { font-size: 21px; }
+    .data-list { display: grid; gap: 10px; }
+    .data-item { display: flex; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .data-item:last-child { border-bottom: 0; }
+    .data-item span:last-child { color: var(--muted); text-align: right; }
+
+    .roadmap { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+    .roadmap::before { content: ""; position: absolute; left: 5%; right: 5%; top: 34px; height: 2px; background: linear-gradient(90deg, var(--mint), var(--cyan)); opacity: .3; }
+    .milestone { position: relative; padding-top: 72px; }
+    .milestone::before { content: ""; position: absolute; top: 23px; left: 19px; width: 20px; height: 20px; border: 6px solid var(--paper); border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 2px rgba(84,240,186,.3); }
+    .milestone-card { min-height: 245px; padding: 20px; border: 1px solid var(--line); border-radius: 19px; background: var(--panel); }
+    .milestone small { color: var(--mint); font-weight: 900; }
+    .milestone h3 { margin: 9px 0 13px; font-size: 18px; }
+    .milestone p { color: var(--muted); font-size: 12px; }
+    .milestone .cut { color: var(--amber); font-size: 11px; }
+
+    .demo-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+    .demo-step { position: relative; min-height: 168px; padding: 18px 14px; border: 1px solid var(--line); border-radius: 17px; background: #0a1a16; }
+    .demo-step:not(:last-child)::after { content: "→"; position: absolute; right: -14px; top: 25px; z-index: 2; color: var(--cyan); }
+    .demo-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: #051510; background: linear-gradient(145deg, var(--mint), var(--cyan)); font-weight: 1000; }
+    .demo-step b { display: block; margin: 14px 0 5px; font-size: 13px; }
+    .demo-step p { color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+    .status-board { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; }
+    .now-card { padding: 30px; border: 1px solid rgba(84,240,186,.3); border-radius: 26px; background: linear-gradient(145deg, rgba(84,240,186,.08), var(--panel)); }
+    .now-card h3 { font-size: 25px; }
+    .status-line { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .status-line:last-child { border-bottom: 0; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; background: #546963; }
+    .done .dot { background: var(--mint); box-shadow: 0 0 10px rgba(84,240,186,.4); }
+    .current .dot { background: var(--amber); box-shadow: 0 0 10px rgba(255,201,102,.4); }
+    .status-label { color: var(--muted); font-size: 11px; }
+    .north-star { padding: 30px; border: 1px solid var(--line); border-radius: 26px; background: var(--panel); }
+    .big-metric { margin: 18px 0 8px; color: var(--lime); font-size: 64px; font-weight: 950; line-height: 1; letter-spacing: -.06em; }
+    .north-star p { color: var(--muted); }
+
+    footer { padding: 48px 0 70px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .footer-row { display: flex; justify-content: space-between; gap: 20px; }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; padding-top: 72px; }
+      .hero-copy { text-align: center; }
+      .lead { margin-inline: auto; }
+      .hero-pills { justify-content: center; }
+      .phone-stage { min-height: 650px; }
+      .flow { grid-template-columns: 1fr 1fr; }
+      .flow-step:not(:last-child)::after { display: none; }
+      .flow-step:last-child { grid-column: span 2; }
+      .roadmap { grid-template-columns: 1fr 1fr; }
+      .roadmap::before { display: none; }
+      .milestone { padding-top: 0; }
+      .milestone::before { display: none; }
+      .demo-strip { grid-template-columns: repeat(4, 1fr); }
+      .demo-step:not(:last-child)::after { display: none; }
+    }
+
+    @media (max-width: 720px) {
+      .wrap { width: min(100% - 24px, 1180px); }
+      nav { display: none; }
+      .hero { min-width: 0; min-height: auto; padding: 58px 0 42px; gap: 28px; }
+      .hero-copy { width: 100%; max-width: 100%; overflow: hidden; }
+      h1 { font-size: 51px; }
+      .lead { max-width: 100%; font-size: 17px; }
+      .hero-pills { width: 100%; grid-template-columns: 1fr 1fr; display: grid; }
+      .pill { min-width: 0; padding-inline: 8px; white-space: normal; }
+      .phone-stage { min-height: 570px; transform: scale(.88); margin: -28px 0; }
+      .bubble-tag { display: none; }
+      section { padding: 62px 0; }
+      .section-head { display: block; }
+      .section-note { margin-top: 18px; }
+      .device-boundary { padding: 24px 18px; }
+      .flow, .profile-layout, .gate-grid, .privacy-board, .status-board { grid-template-columns: 1fr; }
+      .flow-step:last-child { grid-column: auto; }
+      .profile-tabs { grid-template-columns: 1fr 1fr; }
+      .profile-tab { padding: 14px; }
+      .mini-flow { grid-template-columns: 1fr 1fr; }
+      .checks { grid-template-columns: 1fr; }
+      .roadmap { grid-template-columns: 1fr; }
+      .milestone-card { min-height: auto; }
+      .demo-strip { grid-template-columns: 1fr 1fr; }
+      .footer-row { display: block; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand"><span class="brand-mark">S</span> SnapCal Visual Plan</div>
+      <nav aria-label="ページ内ナビゲーション">
+        <a href="#experience">体験</a>
+        <a href="#flow">処理</a>
+        <a href="#privacy">プライバシー</a>
+        <a href="#roadmap">実装順</a>
+        <a href="#status">現在地</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap hero" id="experience">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="pulse"></span> Android Hackathon MVP</span>
+        <h1>スクショを、<span class="gradient-text">次の予定へ。</span></h1>
+        <p class="lead">イベント画像をスクショするだけ。端末内で日時を読み取り、安全条件をすべて満たした予定だけをカレンダーへ入れる。</p>
+        <div class="hero-pills">
+          <span class="pill"><strong>端末内</strong> 日本語OCR</span>
+          <span class="pill"><strong>通信なし</strong>・クラウドなし</span>
+          <span class="pill"><strong>5秒</strong> 目標</span>
+          <span class="pill">登録後は <strong>Undo</strong></span>
+        </div>
+      </div>
+
+      <div class="phone-stage" aria-label="LINEのような画面上にSnapCalバブルが常駐するイメージ">
+        <div class="halo"></div>
+        <div class="phone">
+          <div class="screen">
+            <div class="status"><span>22:10</span><span>●●●  Wi-Fi  ▰</span></div>
+            <div class="chat-head">‹  イベント共有グループ</div>
+            <div class="chat">
+              <div class="msg">今度のAIハッカソン、参加する人いる？</div>
+              <div class="msg event-card">
+                <b>AI BUILD NIGHT</b>
+                <small>7月25日 13:00–17:00<br>渋谷テックラウンジ</small>
+              </div>
+              <div class="msg right">行きたい！スクショしておく</div>
+              <div class="msg">定員あるらしいから忘れないようにね</div>
+            </div>
+          </div>
+          <div class="bubble" title="SnapCal">✓</div>
+          <div class="bubble-tag">追加完了。タップで確認、通知から取り消し。</div>
+        </div>
+      </div>
+    </div>
+
+    <section id="flow">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">One job, end to end</div><h2>何が起きるか</h2></div>
+          <p class="section-note">画像の読み込みから予定登録まで、緑の枠内はすべてスマホの中。外部AIへスクショを渡さない。</p>
+        </div>
+
+        <div class="device-boundary">
+          <span class="boundary-label">この端末の中だけ</span>
+          <div class="flow">
+            <article class="flow-step"><span class="step-no">01 / INPUT</span><h3>スクショを受け取る</h3><p>自動検出、または共有メニューから1枚だけ。</p></article>
+            <article class="flow-step"><span class="step-no">02 / READ</span><h3>日本語OCR</h3><p>APK同梱モデルが文字と位置をメモリ上で読む。</p></article>
+            <article class="flow-step"><span class="step-no">03 / JUDGE</span><h3>安全ゲート</h3><p>未来・一意・除外語なし・重複なしを決定的に判定。</p></article>
+            <article class="flow-step"><span class="step-no">04 / WRITE</span><h3>カレンダー追加</h3><p>CalendarContractで選択済みカレンダーへ登録。</p></article>
+            <article class="flow-step"><span class="step-no">05 / CONTROL</span><h3>通知とUndo</h3><p>結果だけを表示。アプリが作った予定だけ取り消せる。</p></article>
+          </div>
+          <div class="cloud-ban"><span class="ban">×</span><b>外へ出さない:</b> スクショ、OCR全文、予定名、場所、URL。INTERNET権限・OpenAI・バックエンド・APIキーも持たない。</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="profiles">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">Two inputs, one brain</div><h2>入口は2通り</h2></div>
+          <p class="section-note">理想はLINE横のような常駐型A。Android制約や権限で不安定なら、同じ解析部分を使う共有型Bでデモを守る。</p>
+        </div>
+
+        <div class="profile-layout">
+          <div class="profile-tabs" role="tablist" aria-label="取込プロファイル">
+            <button class="profile-tab active" id="tab-a" role="tab" aria-selected="true" aria-controls="profile-a" data-profile="a"><strong>A · 常駐型</strong>第一目標</button>
+            <button class="profile-tab" id="tab-b" role="tab" aria-selected="false" aria-controls="profile-b" data-profile="b"><strong>B · 共有型</strong>正式fallback</button>
+          </div>
+
+          <article class="profile-card" id="profile-a" role="tabpanel" aria-labelledby="tab-a">
+            <div class="profile-title"><div><h3>スクショ → 自動で処理</h3><p class="section-note">他アプリ上に52dpのバブルを表示し、監視状態と結果を伝える。</p></div><span class="badge">IDEAL</span></div>
+            <div class="mini-flow">
+              <div class="mini-node"><b>1</b>監視開始</div><div class="mini-node"><b>2</b>MediaStoreで新規スクショ検出</div><div class="mini-node"><b>3</b>Foreground Serviceで解析</div><div class="mini-node"><b>4</b>バブルが ✓ に変化</div>
+            </div>
+            <div class="permission-row"><span class="permission">全写真アクセス</span><span class="permission">オーバーレイ</span><span class="permission">Foreground Service</span><span class="permission">Calendar</span></div>
+          </article>
+
+          <article class="profile-card" id="profile-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+            <div class="profile-title"><div><h3>画像を共有 → その場で処理</h3><p class="section-note">GalleryやLINEからSnapCalへ共有。広い写真権限と常駐を使わない。</p></div><span class="badge fallback">SAFE FALLBACK</span></div>
+            <div class="mini-flow">
+              <div class="mini-node"><b>1</b>画像の共有ボタン</div><div class="mini-node"><b>2</b>SnapCalを選択</div><div class="mini-node"><b>3</b>一時URIで解析</div><div class="mini-node"><b>4</b>URI参照を即破棄</div>
+            </div>
+            <div class="permission-row"><span class="permission no">全写真アクセスなし</span><span class="permission no">オーバーレイなし</span><span class="permission no">Foreground Serviceなし</span><span class="permission">Calendar</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="gate">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">Fail closed</div><h2>勝手に誤登録させない</h2></div>
+          <p class="section-note">OCRが読めたことと、予定を登録してよいことは別。すべての条件が揃った場合だけ自動登録する。</p>
+        </div>
+        <div class="gate-grid">
+          <div class="checklist">
+            <h3>自動登録の必須条件</h3>
+            <div class="checks">
+              <div class="check"><span class="tick">✓</span>イベントが1件だけ</div>
+              <div class="check"><span class="tick">✓</span>タイトルが一意</div>
+              <div class="check"><span class="tick">✓</span>日付＋開始時刻の根拠あり</div>
+              <div class="check"><span class="tick">✓</span>未来400日以内</div>
+              <div class="check"><span class="tick">✓</span>営業時間・期限ではない</div>
+              <div class="check"><span class="tick">✓</span>同じ画像・予定が未登録</div>
+              <div class="check"><span class="tick">✓</span>24時間以内の予定</div>
+              <div class="check"><span class="tick">✓</span>形式・長さ制約を通過</div>
+            </div>
+          </div>
+          <div class="outcomes">
+            <h3>分岐</h3>
+            <div class="result safe"><b>全部OK → 自動追加</b><p>30分前通知を付け、完了通知とUndoを表示。</p></div>
+            <div class="result stop"><b>1つでも不明 → 追加しない</b><p>曖昧、過去、営業時間、複数予定は安全側で停止。候補本文も保存しない。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">Data minimization</div><h2>残すもの／消すもの</h2></div>
+          <p class="section-note">処理に必要な内容はメモリだけ。Roomには復元できないハッシュとCalendar操作メタデータだけを30日間残す。</p>
+        </div>
+        <div class="privacy-board">
+          <article class="privacy-card keep">
+            <h3>保存する · 最小限</h3>
+            <div class="data-list">
+              <div class="data-item"><span>画像SHA-256</span><span>重複防止</span></div>
+              <div class="data-item"><span>処理状態・時刻</span><span>回復と期限管理</span></div>
+              <div class="data-item"><span>予定署名</span><span>本文を戻せないハッシュ</span></div>
+              <div class="data-item"><span>Calendar Event ID</span><span>自分の予定だけUndo</span></div>
+              <div class="data-item"><span>operation token</span><span>クラッシュ後の照合</span></div>
+            </div>
+          </article>
+          <article class="privacy-card drop">
+            <h3>保存しない · すぐ破棄</h3>
+            <div class="data-list">
+              <div class="data-item"><span>スクリーンショット本体</span><span>外部送信もしない</span></div>
+              <div class="data-item"><span>source URI</span><span>処理終了時に破棄</span></div>
+              <div class="data-item"><span>OCR全文</span><span>メモリ上だけ</span></div>
+              <div class="data-item"><span>予定名・日時・場所・URL</span><span>Room・ログに残さない</span></div>
+              <div class="data-item"><span>bounding box集合</span><span>判定後に破棄</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">Build order · 22h + 2h reserve</div><h2>実装する順番</h2></div>
+          <p class="section-note">見た目から作らず、Android固有の不確実性とCalendar副作用を先に潰す。各節目でfallback判断を固定する。</p>
+        </div>
+        <div class="roadmap">
+          <article class="milestone"><div class="milestone-card"><small>M0 · 0–4h</small><h3>成立性を証明</h3><p>SDK、空APK、実機、Calendar、共有取込、監視とoverlayの短いスパイク。</p><div class="cut">4hで不安定ならBを主経路へ</div></div></article>
+          <article class="milestone"><div class="milestone-card"><small>M1 · 4–9h</small><h3>Fake OCR縦切り</h3><p>取込→重複排除→Calendar→通知→Undo→クラッシュ回復を通す。</p><div class="cut">安全なADD/DELETE照合は削らない</div></div></article>
+          <article class="milestone"><div class="milestone-card"><small>M2 · 9–14h</small><h3>実OCRを接続</h3><p>日本語モデル、画像縮小、日時・タイトル抽出、除外語を接続。</p><div class="cut">精度不足なら受理書式を絞る</div></div></article>
+          <article class="milestone"><div class="milestone-card"><small>M3 · 14–18h</small><h3>権限と障害処理</h3><p>FGS、バブル、権限取消、24h stale、30日cleanupを固める。</p><div class="cut">overlay不安定ならBへ固定</div></div></article>
+          <article class="milestone"><div class="milestone-card"><small>M4 · 18–22h</small><h3>評価とデモ</h3><p>正例8・負例6、オフライン、p95、UI、release APK、30秒デモ。</p><div class="cut">20hで機能凍結、残りは回帰</div></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">30 second demo</div><h2>見せ場はこれだけ</h2></div>
+          <p class="section-note">一芸に絞ったストーリー。最後に営業時間画像が登録されないことまで見せ、安全性を証明する。</p>
+        </div>
+        <div class="demo-strip">
+          <article class="demo-step"><span class="demo-icon">1</span><b>監視開始</b><p>画面端にバブル。</p></article>
+          <article class="demo-step"><span class="demo-icon">2</span><b>LINEへ移動</b><p>他アプリでも常駐。</p></article>
+          <article class="demo-step"><span class="demo-icon">3</span><b>スクショ</b><p>バブルが解析中へ。</p></article>
+          <article class="demo-step"><span class="demo-icon">4</span><b>✓ 完了</b><p>予定追加を通知。</p></article>
+          <article class="demo-step"><span class="demo-icon">5</span><b>Calendar確認</b><p>日時と30分前通知。</p></article>
+          <article class="demo-step"><span class="demo-icon">6</span><b>Undo</b><p>作成した予定だけ削除。</p></article>
+          <article class="demo-step"><span class="demo-icon">7</span><b>誤登録防止</b><p>営業時間は追加しない。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="status">
+      <div class="wrap">
+        <div class="section-head">
+          <div><div class="kicker">Current position · 2026-07-17</div><h2>今どこまで来たか</h2></div>
+          <p class="section-note">設計はレビュー済み。次はSDK 36導入後、共有取込の最小縦切りから実コードに入る。</p>
+        </div>
+        <div class="status-board">
+          <article class="now-card">
+            <h3>進捗</h3>
+            <div class="status-line done"><span class="dot"></span><span>オンデバイス設計</span><span class="status-label">完了</span></div>
+            <div class="status-line done"><span class="dot"></span><span>Codex最終レビュー</span><span class="status-label">ok: true · issues 0</span></div>
+            <div class="status-line done"><span class="dot"></span><span>JDK 17・Gradle 9.5・Android CLI</span><span class="status-label">準備済み</span></div>
+            <div class="status-line current"><span class="dot"></span><span>Android SDK 36</span><span class="status-label">利用規約同意後に導入</span></div>
+            <div class="status-line"><span class="dot"></span><span>SnapCal Android実装</span><span class="status-label">次</span></div>
+            <div class="status-line"><span class="dot"></span><span>実機デモ・回帰</span><span class="status-label">未着手</span></div>
+          </article>
+          <article class="north-star">
+            <div class="kicker">North star</div>
+            <div class="big-metric">≤ 5s</div>
+            <h3>スクショから結果通知まで</h3>
+            <p>正例を正しく登録するだけでなく、負例6枚の自動誤登録を0件にする。速さより「勝手に入れない」を優先。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-row">
+      <span>SnapCal · Android-only hackathon MVP</span>
+      <span>Source of truth: snapcal-implementation-plan.md · Visualized 2026-07-17</span>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = [...document.querySelectorAll('.profile-tab')];
+    const panels = [...document.querySelectorAll('.profile-card')];
+
+    function activateProfile(key) {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.profile === key;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      panels.forEach((panel) => { panel.hidden = panel.id !== `profile-${key}`; });
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => activateProfile(tab.dataset.profile));
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+        activateProfile(tabs[next].dataset.profile);
+        tabs[next].focus();
+      });
+    });
+  </script>
+</body>
+</html>

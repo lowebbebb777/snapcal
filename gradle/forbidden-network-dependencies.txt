@@ -1,0 +1,22 @@
+# Lowercase group:module fragments that must never enter a release variant.
+com.squareup.okhttp3:
+com.squareup.retrofit2:
+io.ktor:ktor-client
+com.android.volley:
+com.google.firebase:firebase-analytics
+com.google.firebase:firebase-crashlytics
+com.google.firebase:firebase-messaging
+com.google.firebase:firebase-database
+com.google.firebase:firebase-firestore
+com.google.firebase:firebase-storage
+com.google.firebase:firebase-config
+com.google.firebase:firebase-perf
+com.google.android.gms:play-services-analytics
+com.google.android.gms:play-services-ads
+com.google.android.datatransport:transport-backend-cct
+org.chromium.net:
+io.grpc:
+com.amplitude:
+com.segment.analytics:
+io.sentry:sentry-android
+com.microsoft.appcenter:

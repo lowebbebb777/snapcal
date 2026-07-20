@@ -1,0 +1,15 @@
+Screenshots are how events get lost. We save an announcement from a chat or social post, but the date never reaches our calendar.
+
+SnapCal turns that screenshot into a calendar event, while keeping the private image on the Android device.
+
+Here is the app. There is no account, API key, or cloud setup. I select a writable Android calendar. For the broadest privacy, I can share just one image from Gallery or LINE. I can also explicitly start persistent monitoring, which places a small bubble at the edge of the screen.
+
+This demo image contains one clear Japanese event: SnapCal Demo, July twenty-first at seven P.M. I share it to SnapCal. The bundled Japanese O C R and deterministic date rules run locally. The app only proceeds when there is exactly one title, one date, and one start time, and the event is safely in the future.
+
+The result is added to the selected calendar with a thirty-minute reminder. The notification also provides Undo, which removes only the event created by this SnapCal operation.
+
+Ambiguous screenshots are intentionally rejected instead of guessed. The release A P K has no Internet or network-state permission, and SnapCal never stores the image, full O C R transcript, event title, location, or U R L.
+
+We built SnapCal with Codex and G P T five point six. G P T five point six helped design the Android architecture, deterministic safety gate, recoverable Calendar writes, adversarial tests, and an executable privacy release gate. G P T five point six is part of the development workflow, not the installed runtime.
+
+SnapCal makes a screenshot useful, while treating uncertainty and privacy as product features.
