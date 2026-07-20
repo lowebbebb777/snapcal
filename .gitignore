@@ -5,6 +5,7 @@ local.properties
 **/build/
 dist/*.apk
 dist/*.sha256
+dist/*.zip
 submission/review/*.log
 *.iml
 captures/
