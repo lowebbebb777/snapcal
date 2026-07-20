@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.tazawa.snapcal.MainActivity
 import com.tazawa.snapcal.R
@@ -89,9 +90,10 @@ class NotificationCenter(
                 if (outcome is ProcessingOutcome.Added) {
                     val undoIntent = PendingIntent.getBroadcast(
                         context,
-                        outcome.contentHash.hashCode(),
+                        0,
                         Intent(context, UndoReceiver::class.java)
                             .setAction(UndoReceiver.ACTION_UNDO)
+                            .setData(Uri.parse(ResultNotificationIdentity.undoData(outcome.contentHash)))
                             .putExtra(UndoReceiver.EXTRA_CONTENT_HASH, outcome.contentHash),
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                     )
@@ -99,10 +101,18 @@ class NotificationCenter(
                 }
             }
             .build()
-        manager.notify(RESULT_NOTIFICATION_ID, notification)
+        if (outcome is ProcessingOutcome.Added) {
+            manager.notify(
+                ResultNotificationIdentity.tag(outcome.contentHash),
+                RESULT_NOTIFICATION_ID,
+                notification,
+            )
+        } else {
+            manager.notify(RESULT_NOTIFICATION_ID, notification)
+        }
     }
 
-    fun postUndoResult(success: Boolean) {
+    fun postUndoResult(contentHash: String, success: Boolean) {
         val notification = NotificationCompat.Builder(context, CHANNEL_RESULTS)
             .setSmallIcon(R.drawable.ic_snapcal_notification)
             .setContentTitle(if (success) "予定を取り消しました" else "予定を取り消せませんでした")
@@ -110,7 +120,11 @@ class NotificationCenter(
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .build()
-        manager.notify(RESULT_NOTIFICATION_ID, notification)
+        manager.notify(
+            ResultNotificationIdentity.tag(contentHash),
+            RESULT_NOTIFICATION_ID,
+            notification,
+        )
     }
 
     companion object {
@@ -119,4 +133,10 @@ class NotificationCenter(
         private const val CHANNEL_MONITORING = "snapcal_monitoring"
         private const val CHANNEL_RESULTS = "snapcal_results"
     }
+}
+
+internal object ResultNotificationIdentity {
+    fun tag(contentHash: String): String = "snapcal-result-$contentHash"
+
+    fun undoData(contentHash: String): String = "snapcal://undo/$contentHash"
 }

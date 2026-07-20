@@ -130,7 +130,15 @@ val privacyGateSelfTest by tasks.registering {
 val releaseGate by tasks.registering {
     group = "verification"
     description = "Builds release APKs and fails if a release can access the network."
-    dependsOn("assembleDemoRelease", "assembleProductionRelease", privacyGateSelfTest)
+    dependsOn(
+        "assembleDemoRelease",
+        "assembleProductionRelease",
+        "testDemoDebugUnitTest",
+        "testProductionDebugUnitTest",
+        "lintVitalDemoRelease",
+        "lintVitalProductionRelease",
+        privacyGateSelfTest,
+    )
 
     doLast {
         val forbiddenPermissions = listOf(

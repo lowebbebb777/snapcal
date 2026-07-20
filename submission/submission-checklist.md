@@ -7,10 +7,10 @@
 - [x] English project description prepared
 - [x] English setup and evaluator instructions prepared
 - [x] Codex workflow and GPT-5.6 contribution documented
-- [ ] API 36 end-to-end evidence captured
+- [x] API 36 end-to-end evidence captured
 - [ ] Final demo MP4 is under 3 minutes and contains audible voiceover
-- [ ] Final screenshots selected
-- [ ] Release gate, signatures, and SHA-256 reverified
+- [x] Final screenshots selected
+- [x] Release gate, signatures, and SHA-256 reverified
 - [ ] Final Codex review reports `ok: true`
 
 ## Owner-only publication and consent

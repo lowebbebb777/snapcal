@@ -91,6 +91,8 @@ export ANDROID_HOME=/path/to/android-sdk
 
 `releaseGate`は次をすべて通過した場合だけ、インストール可能なdemo／production APKとSHA-256を`dist/`へコピーします。
 
+- demo／productionのKotlin単体テスト
+- 両release variantの`lintVital`
 - 両release variantのビルド
 - merged manifestの禁止権限検査
 - runtime依存の既知ネットワーク送信ライブラリ検査
@@ -100,7 +102,7 @@ export ANDROID_HOME=/path/to/android-sdk
 
 ## 使い方
 
-1. `dist/app-demo-release.apk`をAndroid 10（API 29）以上の端末へインストールします。最終E2E確認対象はAPI 36です。
+1. `dist/app-demo-release.apk`をAndroid 10（API 29）以上の端末へインストールします。最終E2EはAndroid 16（API 36）AOSPエミュレータで確認済みです。
 2. SnapCalを開き、書込み先カレンダーを選びます。
 3. 常駐監視を使う場合は、写真全体・通知・オーバーレイ権限を許可して「常駐監視を開始」を押します。
 4. 権限を絞る場合は、他アプリの共有メニューからSnapCalを選びます。この経路は写真全体やオーバーレイ権限を必要としません。
@@ -120,4 +122,4 @@ Android 14以降で写真を一部だけ許可した場合、自動監視は開�
 
 ## 現在の検証範囲
 
-Kotlin単体テスト、両flavorビルド、完成APKの静的プライバシー検査は自動化しています。MediaStoreのOEM差、オーバーレイ、Calendar Provider、機内モードOCRの最終E2EはAPI 36実機で確認する項目です。
+`releaseGate`は両flavor合計130件のKotlin単体テスト、`lintVital`、releaseビルド、依存・manifest・完成APKの通信禁止検査まで自動実行します。Android 16（API 36）AOSPエミュレータでは、共有取込と常駐監視の両方について、オンデバイスOCR、Calendar追加、複数通知、予定ごとのUndo実削除までE2E確認済みです。実機公開前には、端末メーカーごとのMediaStore・オーバーレイ挙動を追加確認します。

@@ -25,7 +25,7 @@ class UndoReceiver : BroadcastReceiver() {
                 runCatching {
                     NotificationCenter(context).apply {
                         ensureChannels()
-                        postUndoResult(success)
+                        postUndoResult(contentHash, success)
                     }
                 }
             } finally {

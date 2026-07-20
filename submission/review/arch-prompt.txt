@@ -1,0 +1,25 @@
+SnapCal Android MVPの現行リポジトリ全体（current HEAD）を、リリース前レビューゲートとしてread-onlyでレビューせよ。出力はJSON 1つのみとし、Markdownや前置きを出さないこと。
+
+これはroot commitのため通常の差分ではなく、README.md、app/build.gradle.kts、app/src/main、app/src/test、gradle/forbidden-network-dependencies.txtを実際に開いて全体設計を確認すること。主機能は、Android上で新しいスクリーンショットまたは共有画像を検知し、同梱ML Kit日本語OCRと決定的抽出を端末内で行い、明確な未来予定だけをCalendarContractへ登録し、通知から安全にUndoすること。画像・OCR全文・予定本文をアプリ側へ永続化せず、release APKはINTERNET/ACCESS_NETWORK_STATEを持たない。
+
+直前の機械検証: demo/production各60件、合計120 unit tests成功。lintVital両flavor成功。releaseGate成功。API 36 AOSPエミュレータで共有→OCR→Calendar追加→通知→Undo実削除、およびFGS+overlayバブル→MediaStore新規Screenshot自動検知→OCR→Calendar追加を実証済み。
+
+観点: 依存関係、責務分割、Android lifecycle/coroutine、権限・exported component、Calendarの所有権/冪等性/不確定結果、プライバシー/通信禁止設計、回復処理、破壊的変更、重大なテスト不足。レビューゲートなので、リリースを止めるべき実在する問題だけをblockingとすること。blockingが1件でもあればok:false。推測だけの問題はadvisoryにすること。
+
+JSON schema:
+{
+  "ok": true,
+  "phase": "arch",
+  "summary": "レビュー要約",
+  "issues": [
+    {
+      "severity": "blocking|advisory",
+      "category": "correctness|security|perf|maintainability|testing|style",
+      "file": "relative/path",
+      "lines": "42-45",
+      "problem": "問題の説明",
+      "recommendation": "最小修正案"
+    }
+  ],
+  "notes_for_next_review": "次回レビュー用メモ"
+}
