@@ -16,12 +16,12 @@ The first architecture review found two blocking issues: transient Calendar reco
 ## Verification evidence
 
 - `./gradlew clean releaseGate`: successful, 174 actionable tasks
-- Unit tests: 130 total, 0 failures, 0 errors
+- Unit tests: 138 total, 0 failures, 0 errors
 - `lintVital`: passed for demo and production flavors
 - API 36 E2E: Share → on-device OCR → Calendar → Undo; persistent monitoring → screenshot detection → Calendar; two independent notifications and Undo operations
 - Final APK: no `INTERNET` or `ACCESS_NETWORK_STATE` permission
 - Signature: APK Signature Scheme v2, one signer
-- Demo video: 101.1 seconds, 1920×1080 H.264, audible AAC voiceover
+- Demo video: 101.6 seconds, 1920×1080 H.264, audible AAC voiceover with English subtitle track
 
 ## Non-blocking follow-ups
 

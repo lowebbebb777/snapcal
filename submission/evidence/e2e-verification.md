@@ -30,7 +30,7 @@ Verified on 2026-07-20 with the signed demo release APK on an Android 16 / API 3
 ## Automated release evidence
 
 - `./gradlew clean releaseGate`: successful, 174 actionable tasks.
-- Unit tests: 65 demo + 65 production = 130 tests; 0 failures/errors.
+- Unit tests: 69 demo + 69 production = 138 tests; 0 failures/errors.
 - `lintVitalDemoRelease` and `lintVitalProductionRelease`: successful.
 - Final APK inspection: neither release contains `INTERNET` nor `ACCESS_NETWORK_STATE`.
 - Dependency inspection: the CCT network backend and known HTTP clients are absent.

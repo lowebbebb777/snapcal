@@ -1,0 +1,99 @@
+1
+00:00:00.050 --> 00:00:03.966
+Every day, useful plans disappear into screenshots.
+
+2
+00:00:03.966 --> 00:00:05.994
+A live event in LINE.
+
+3
+00:00:05.994 --> 00:00:07.869
+A workshop on X.
+
+4
+00:00:07.869 --> 00:00:10.331
+A reservation sent in a chat.
+
+5
+00:00:10.331 --> 00:00:13.290
+We save the image... and still miss the date.
+
+6
+00:00:13.290 --> 00:00:15.471
+SnapCal closes that gap.
+
+7
+00:00:15.471 --> 00:00:19.706
+Take a screenshot, and it becomes a calendar event in seconds.
+
+8
+00:00:19.706 --> 00:00:21.454
+There are two ways to use it.
+
+9
+00:00:21.454 --> 00:00:25.663
+For maximum privacy, share one image directly to SnapCal.
+
+10
+00:00:25.663 --> 00:00:30.969
+Or, when you choose, start monitoring and keep the small bubble at the edge of the screen.
+
+11
+00:00:30.969 --> 00:00:35.357
+The moment a new screenshot arrives, the bubble shows the progress.
+
+12
+00:00:35.357 --> 00:00:39.566
+Here is the important part: the screenshot never leaves the phone.
+
+13
+00:00:39.566 --> 00:00:44.808
+Japanese OCR, date extraction, and safety checks all run on device.
+
+14
+00:00:44.808 --> 00:00:46.007
+No account.
+
+15
+00:00:46.007 --> 00:00:47.882
+No API key.
+
+16
+00:00:47.882 --> 00:00:49.987
+No cloud image upload.
+
+17
+00:00:49.987 --> 00:00:57.499
+SnapCal only adds an event when it finds exactly one clear title, one future date, and one start time.
+
+18
+00:00:57.499 --> 00:01:00.931
+If the screenshot is ambiguous, it does nothing.
+
+19
+00:01:00.931 --> 00:01:03.290
+That restraint is the superpower.
+
+20
+00:01:03.290 --> 00:01:06.492
+SnapCal is designed not to pollute your calendar.
+
+21
+00:01:06.492 --> 00:01:15.369
+When the event is clear, SnapCal adds it to the calendar you selected, including a Google Calendar synced with Android, and sets a thirty-minute reminder.
+
+22
+00:01:15.369 --> 00:01:21.364
+Every result has its own Undo action, so SnapCal can remove only the event it created.
+
+23
+00:01:21.364 --> 00:01:28.176
+We used Codex and GPT-5.6 to design, build, test, and harden this flow.
+
+24
+00:01:28.176 --> 00:01:31.632
+But no cloud AI runs inside the installed app.
+
+25
+00:01:31.632 --> 00:01:41.594
+SnapCal turns the moment, “I should remember this,” into, “It is already on my calendar” — privately, safely, and almost instantly.

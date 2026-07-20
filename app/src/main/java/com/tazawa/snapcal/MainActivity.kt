@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tazawa.snapcal.capture.MonitoringPreferences
@@ -189,6 +191,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+internal fun calendarAccountLabel(accountName: String): String {
+    val normalized = accountName.trim().replace(Regex("\\s+"), " ")
+    val at = normalized.indexOf('@')
+    if (at <= 0 || at == normalized.lastIndex) return normalized
+    val local = normalized.substring(0, at)
+    val maskedLocal = if (local.length == 1) "${local.first()}•••" else "${local.first()}•••${local.last()}"
+    return maskedLocal + normalized.substring(at)
+}
+
 @Composable
 private fun SnapCalApp(
     monitoringEnabled: Boolean,
@@ -211,6 +222,7 @@ private fun SnapCalApp(
                     .fillMaxSize()
                     .background(background)
                     .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
                     .padding(horizontal = 22.dp, vertical = 58.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
@@ -260,6 +272,7 @@ private fun SnapCalApp(
                         } else {
                             calendars.forEach { calendar ->
                                 val selected = calendar.id == selectedCalendarId
+                                val accountLabel = calendarAccountLabel(calendar.accountName)
                                 OutlinedButton(
                                     modifier = Modifier.fillMaxWidth(),
                                     onClick = { onSelectCalendar(calendar.id) },
@@ -269,12 +282,30 @@ private fun SnapCalApp(
                                         contentColor = if (selected) mint else ink,
                                     ),
                                 ) {
-                                    Text(
-                                        text = if (selected) "✓ ${calendar.displayName}" else calendar.displayName,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = if (selected) "✓ ${calendar.displayName}" else calendar.displayName,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        )
+                                        if (accountLabel.isNotEmpty()) {
+                                            Text(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                text = accountLabel,
+                                                color = if (selected) mint.copy(alpha = 0.72f) else muted,
+                                                fontSize = 11.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                        }
+                                    }
                                 }
                             }
+                            Text(
+                                text = "Googleカレンダーは、Androidのアカウント同期と「他のアプリとのデータ共有」を有効にすると表示されます。",
+                                color = muted,
+                                fontSize = 11.sp,
+                            )
                         }
                     }
                 }

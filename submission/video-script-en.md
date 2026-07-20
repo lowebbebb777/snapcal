@@ -1,19 +1,25 @@
 # SnapCal demo voiceover
 
-Target length: approximately 1 minute 45 seconds.
+Target length: approximately 1 minute 45 seconds. Delivery: warm, conversational, and confident; pause after the short opening examples and emphasize “never leaves the phone,” “does nothing,” and “the superpower.”
 
-> Screenshots are how events get lost. We save an announcement from a chat or social post, but the date never reaches our calendar.
+> Every day, useful plans disappear into screenshots.
 >
-> SnapCal turns that screenshot into a calendar event, while keeping the private image on the Android device.
+> A live event in LINE. A workshop on X. A reservation sent in a chat.
 >
-> Here is the app. There is no account, API key, or cloud setup. I select a writable Android calendar. For the broadest privacy, I can share just one image from Gallery or LINE. I can also explicitly start persistent monitoring, which places this small bubble at the edge of the screen.
+> We save the image... and still miss the date.
 >
-> This demo image contains one clear Japanese event: SnapCal Demo, July twenty-first at seven P.M. I share it to SnapCal. The bundled Japanese OCR and deterministic date rules run locally. The app only proceeds when there is exactly one title, one date, and one start time, and the event is safely in the future.
+> SnapCal closes that gap. Take a screenshot, and it becomes a calendar event in seconds.
 >
-> The result is added to the selected calendar with a thirty-minute reminder. The notification also provides Undo, which removes only the event created by this SnapCal operation.
+> There are two ways to use it. For maximum privacy, share one image directly to SnapCal. Or, when you choose, start monitoring and keep the small bubble at the edge of the screen. The moment a new screenshot arrives, the bubble shows the progress.
 >
-> Ambiguous screenshots are intentionally rejected instead of guessed. The release APK has no Internet or network-state permission, and SnapCal never stores the image, full OCR transcript, event title, location, or URL.
+> Here is the important part: the screenshot never leaves the phone. Japanese OCR, date extraction, and safety checks all run on device. No account. No API key. No cloud image upload.
 >
-> We built SnapCal with Codex and GPT-5.6. GPT-5.6 helped design the Android architecture, deterministic safety gate, recoverable Calendar writes, adversarial tests, and an executable privacy release gate. GPT-5.6 is part of the development workflow—not the installed runtime.
+> SnapCal only adds an event when it finds exactly one clear title, one future date, and one start time. If the screenshot is ambiguous, it does nothing.
 >
-> SnapCal makes a screenshot useful, while treating uncertainty and privacy as product features.
+> That restraint is the superpower. SnapCal is designed not to pollute your calendar.
+>
+> When the event is clear, SnapCal adds it to the calendar you selected, including a Google Calendar synced with Android, and sets a thirty-minute reminder. Every result has its own Undo action, so SnapCal can remove only the event it created.
+>
+> We used Codex and GPT-5.6 to design, build, test, and harden this flow. But no cloud AI runs inside the installed app.
+>
+> SnapCal turns the moment, “I should remember this,” into, “It is already on my calendar” — privately, safely, and almost instantly.

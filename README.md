@@ -4,7 +4,7 @@
 
 SnapCal turns a screenshot into a calendar event without uploading the image. On Android, the user can share one image to SnapCal or explicitly start screenshot monitoring. Bundled Japanese OCR and deterministic Kotlin rules run entirely on the device. SnapCal only auto-adds an event when the title, date, and start time are unambiguous and in the future; otherwise it safely does nothing.
 
-The app writes through Android's standard `CalendarContract`, adds a 30-minute reminder, and provides an Undo action in the result notification. No Google Calendar API key or Codex Calendar plugin is required.
+The app writes through Android's standard `CalendarContract`, adds a 30-minute reminder, and provides an Undo action in the result notification. No Google Calendar API key or Codex Calendar plugin is required. A visible, writable Google Calendar that supports reminders can appear as a destination when Android account sync and Google Calendar's **Share Google Calendar data with other apps** setting are enabled.
 
 ## Privacy and safety
 
@@ -29,6 +29,10 @@ export ANDROID_HOME=/path/to/android-sdk
 For a quick test, install `dist/app-demo-release.apk` on Android 10 or later. Open SnapCal, grant calendar access, select a writable on-device calendar, then share a single screenshot containing one clear Japanese event such as `SnapCalデモ / 7月21日 19:00`. The result notification includes Undo. Screenshot monitoring additionally needs photo, notification, and overlay permissions and must be explicitly started by the user.
 
 Detailed evaluator instructions are in [`submission/testing-instructions.md`](submission/testing-instructions.md).
+
+### Google Calendar
+
+SnapCal does not call Google Calendar over the network. It lists visible writable calendars exposed by Android Calendar Provider and writes the event to the selected calendar ID. Android's Google sync adapter then handles normal synchronization to Google Calendar. See [`submission/evidence/google-calendar-compatibility.md`](submission/evidence/google-calendar-compatibility.md) for the code path, prerequisites, and verification boundary.
 
 ## How Codex and GPT-5.6 built SnapCal
 
@@ -69,7 +73,7 @@ GPT-5.6 was used during implementation and final submission hardening through Co
 - 30分前通知とUndo: 選択した書込み可能カレンダーへReminder付きで追加し、結果通知から取り消せます。
 - 重複・クラッシュ対策: 画像ハッシュ、イベント署名、操作トークンを使い、同じ予定の二重登録を防ぎます。
 
-Google Calendar用のCodexプラグインやAPIキーは不要です。Android標準の`CalendarContract`を使うため、端末に登録済みのローカル／Google等のカレンダーから保存先を選びます。
+Google Calendar用のCodexプラグインやAPIキーは不要です。Android標準の`CalendarContract`を使うため、端末に登録済みのローカル／Google等のカレンダーから保存先を選びます。Google Calendarを使う場合は、Googleアカウントのカレンダー同期とGoogle Calendarの「他のアプリとGoogle Calendarのデータを共有」が有効である必要があります。
 
 ## プライバシー境界
 
@@ -122,4 +126,4 @@ Android 14以降で写真を一部だけ許可した場合、自動監視は開�
 
 ## 現在の検証範囲
 
-`releaseGate`は両flavor合計130件のKotlin単体テスト、`lintVital`、releaseビルド、依存・manifest・完成APKの通信禁止検査まで自動実行します。Android 16（API 36）AOSPエミュレータでは、共有取込と常駐監視の両方について、オンデバイスOCR、Calendar追加、複数通知、予定ごとのUndo実削除までE2E確認済みです。実機公開前には、端末メーカーごとのMediaStore・オーバーレイ挙動を追加確認します。
+`releaseGate`は両flavor合計138件のKotlin単体テスト、`lintVital`、releaseビルド、依存・manifest・完成APKの通信禁止検査まで自動実行します。Android 16（API 36）AOSPエミュレータでは、共有取込と常駐監視の両方について、オンデバイスOCR、Calendar追加、複数通知、予定ごとのUndo実削除までE2E確認済みです。実機公開前には、端末メーカーごとのMediaStore・オーバーレイ挙動を追加確認します。

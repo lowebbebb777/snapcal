@@ -20,6 +20,16 @@ adb install -r app-demo-release.apk
 
 The Android device or emulator must expose at least one writable calendar that supports reminders. A local calendar is sufficient; a Google account is not required. If a synced calendar is selected, its provider may sync the event using the device's normal calendar behavior.
 
+### Google Calendar destination
+
+1. Add the evaluator's Google account to Android and enable Calendar account sync.
+2. In Google Calendar, open **Settings → General** and enable **Share Google Calendar data with other apps**.
+3. Open SnapCal and choose the Google calendar from **カレンダーを選ぶ**. SnapCal shows the Android calendar display name and account name.
+4. Run the share-image path below.
+5. Refresh Google Calendar on the web and confirm the event and 30-minute reminder appear.
+
+SnapCal never receives a Google OAuth token and does not call Google APIs. It writes to Android Calendar Provider; Google's Android sync adapter performs the normal calendar synchronization.
+
 ## Fast path: share one screenshot
 
 1. Open SnapCal.

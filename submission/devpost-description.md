@@ -19,7 +19,7 @@ SnapCal is an Android app with two deliberate entry points:
 - Share one image from Gallery, LINE, or another Android app.
 - Explicitly start foreground screenshot monitoring and keep a small edge bubble visible.
 
-The app runs bundled Japanese OCR on the device, extracts event evidence with deterministic Kotlin rules, and automatically adds exactly one event only when the title, date, and start time are unambiguous and safely in the future. It adds a 30-minute reminder and posts a private result notification with Undo.
+The app runs bundled Japanese OCR on the device, extracts event evidence with deterministic Kotlin rules, and automatically adds exactly one event only when the title, date, and start time are unambiguous and safely in the future. It adds a 30-minute reminder to the selected Android calendar—including a Google Calendar already synced with the phone—and posts a private result notification with Undo.
 
 If the screenshot contains multiple events, separated date regions, non-event phrases such as business hours or deadlines, missing fields, a past time, or unsupported calendar capabilities, SnapCal refuses to guess.
 
