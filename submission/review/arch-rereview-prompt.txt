@@ -1,0 +1,36 @@
+SnapCal Android MVPのリリース前アーキテクチャ再レビューを行え。出力はJSON 1つのみとし、Markdownや前置きを出さないこと。リポジトリはcurrent HEADをread-onlyで実際に読むこと。
+
+前回blocking:
+1. RecoveryWorkerがCalendar Providerの一時的なPermissionDenied/ProviderUnavailable/DeleteNotConfirmedをFAILEDへ終端していた。
+2. 全結果通知が固定ID 3102で置換され、複数追加時に先行イベントのUndo入口が失われていた。
+
+修正内容:
+- Add/Delete reconcile結果をCOMPLETE/FAIL/RETRYへ明示分類し、一時的・不確定結果ではDB状態を維持してWorkManager Result.retry()を返す。確定的不一致だけをfail-closedで終端する。分類テストを追加。
+- 追加成功通知はcontentHash固有tagでNotificationManagerへ登録し、Undo PendingIntentはcontentHash固有data URIを持つ。Undo結果も同じtagだけを置換する。識別子テストを追加。
+- `releaseGate`単独で両flavorのunit testとlintVitalを実行するよう依存を追加。
+
+検証:
+- `./gradlew clean releaseGate` 成功、174 actionable tasks。
+- demo 65 + production 65 = 130 unit tests、失敗0。両lintVital成功。
+- API 36で2件の別イベントを連続自動追加し、2つのcontent-hash固有通知を確認。通知A/Bを順番に操作して対応イベントだけが各々削除されることをCalendarContract queryで確認。
+- 既存の共有→OCR→Calendar→通知→Undo、常駐FGS+overlay→MediaStore新規Screenshot→OCR→Calendarも成功。
+
+前回メモ: Calendar一時障害後の状態維持と再試行、複数追加の独立Undo、releaseGate統合を重点確認すること。blockingが1件でもあればok:false。リリースを止めるべき実在問題だけをblockingとし、改善提案はadvisoryにする。
+
+JSON schema:
+{
+  "ok": true,
+  "phase": "arch",
+  "summary": "レビュー要約",
+  "issues": [
+    {
+      "severity": "blocking|advisory",
+      "category": "correctness|security|perf|maintainability|testing|style",
+      "file": "relative/path",
+      "lines": "42-45",
+      "problem": "問題の説明",
+      "recommendation": "最小修正案"
+    }
+  ],
+  "notes_for_next_review": "次回レビュー用メモ"
+}

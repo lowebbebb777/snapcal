@@ -1,0 +1,10 @@
+SnapCalの変更差分 `e592fab..HEAD` のうち、以下をread-onlyでレビューせよ。出力はJSON 1つのみで、Markdownや前置きを出さないこと。
+
+対象:
+- app/src/main/java/com/tazawa/snapcal/processing/RecoveryWorker.kt
+- app/src/test/java/com/tazawa/snapcal/processing/RecoveryDispositionTest.kt
+
+観点: Calendar add/delete不確定結果の状態維持、WorkManager retry集約、確定的不一致のfail-closed、例外時挙動、Kotlin exhaustiveness、テスト網羅。前回arch再レビューはok:trueで、Worker境界の混在結果テスト不足だけがadvisoryだった。リリースを止める実在問題のみblockingとし、blockingが1件でもあればok:false。
+
+JSON schema:
+{"ok":true,"phase":"diff","summary":"要約","issues":[{"severity":"blocking|advisory","category":"correctness|security|perf|maintainability|testing|style","file":"relative/path","lines":"42-45","problem":"説明","recommendation":"修正案"}],"notes_for_next_review":"メモ"}

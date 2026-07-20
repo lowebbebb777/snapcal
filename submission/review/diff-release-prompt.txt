@@ -1,0 +1,13 @@
+SnapCalの変更差分 `e592fab..HEAD` と現行の関連ゲートをread-onlyでレビューせよ。出力はJSON 1つのみで、Markdownや前置きを出さないこと。
+
+対象:
+- app/build.gradle.kts
+- app/src/main/AndroidManifest.xml
+- app/src/main/java/com/google/android/datatransport/cct/CCTDestination.java
+- gradle/forbidden-network-dependencies.txt
+- README.md
+
+観点: releaseGateの依存関係と循環、unit/lint実行保証、禁止権限・依存検査、完成APK検査、ネットワーク無効ML Kit互換クラス、説明と実装の一致、署名方針。`./gradlew clean releaseGate`は成功し、両flavor各65 unit tests、両lint、APK permission検査、checksumを通過済み。ハッカソンreleaseのdebug key署名はREADMEで明記し、ストア公開は別ゲート。リリースを止める実在問題のみblockingとし、blockingが1件でもあればok:false。
+
+JSON schema:
+{"ok":true,"phase":"diff","summary":"要約","issues":[{"severity":"blocking|advisory","category":"correctness|security|perf|maintainability|testing|style","file":"relative/path","lines":"42-45","problem":"説明","recommendation":"修正案"}],"notes_for_next_review":"メモ"}

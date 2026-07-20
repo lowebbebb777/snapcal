@@ -1,0 +1,31 @@
+あなたは最終横断レビュー担当です。以下は同一Androidアプリに対するCodexレビュー結果です。
+相互矛盾、見落とされたリリース阻害要因、助言が実質的なblocking問題ではないかを確認してください。
+提示情報だけを根拠にし、存在しない問題を推測でblockingにしないでください。
+
+出力はJSON 1個だけ:
+{"ok":true,"phase":"cross-check","summary":"要約","issues":[{"severity":"blocking|advisory","category":"correctness|security|perf|maintainability|testing|style","source":"arch|diff-recovery|diff-notification|diff-release|cross-cutting","problem":"説明","recommendation":"修正案"}],"final_gate":"pass|fail"}
+
+判定基準:
+- blockingが1件でもあれば ok:false, final_gate:"fail"
+- blockingがなければ ok:true, final_gate:"pass"
+- 既にAPI 36実機相当E2EとGradle releaseGateが成功していることを考慮する
+
+ARCH RE-REVIEW:
+{"ok":true,"phase":"arch","summary":"前回blockingだったRecoveryWorkerの一時失敗の永続失敗化と通知Undoの上書きを解消。リリース阻害問題なし。","issues":[{"severity":"advisory","category":"testing","problem":"Worker境界で複数レコード結果が混在する統合テストは未追加。","recommendation":"将来、依存注入したWorkerテストを追加する。"}]}
+
+DIFF RECOVERY:
+{"ok":true,"phase":"diff","summary":"不確定なCalendar add/delete結果は状態を維持したままWorkManager retryへ集約され、確定的不一致はfail-closed。リリース阻害問題なし。","issues":[{"severity":"advisory","category":"testing","problem":"結果型からDispositionへの写像は検証済みだが、Worker境界の混在結果と例外時retryを直接検証していない。","recommendation":"将来、依存注入したWorker統合テストを追加する。"}]}
+
+DIFF NOTIFICATION:
+{"ok":true,"phase":"diff","summary":"通知はcontentHash由来tagで独立し、PendingIntentは一意なdata URIで識別。Undo結果は対象通知だけを置換する。API 36で2件を順番にUndoするE2E成功。","issues":[{"severity":"advisory","category":"testing","problem":"文字列単体テストはあるが、PendingIntent tokenの同一性をRobolectric等で直接検証していない。","recommendation":"将来、instrumentationテストを追加する。"}]}
+
+DIFF RELEASE:
+{"ok":true,"phase":"diff","summary":"releaseGateは両flavorのunit test、lintVital、APK生成、禁止権限・依存関係、完成APK権限、checksumを実行。ML Kit互換クラスは送信先を持たずCCT backendも除外。ハッカソン限定debug key方針も文書化済み。","issues":[{"severity":"advisory","category":"maintainability","problem":"aaptパスがBuild Tools 36.0.0に固定されている。現在の提出環境では成功済み。","recommendation":"将来、AGPが選択したBuild Toolsを動的解決する。"}]}
+
+検証事実:
+- ./gradlew clean releaseGate 成功（174 actionable tasks）
+- demo/production各65件、計130 unit tests成功
+- 両flavor lintVital成功
+- APKにINTERNET/ACCESS_NETWORK_STATEなし
+- apksigner v2=true、署名者1名
+- API 36 E2E: Share OCR→Calendar→Undo実削除、常駐監視→Screenshot検出→OCR→Calendar、2件の独立Undo

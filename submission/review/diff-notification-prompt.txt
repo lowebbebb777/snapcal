@@ -1,0 +1,11 @@
+SnapCalの変更差分 `e592fab..HEAD` のうち、以下をread-onlyでレビューせよ。出力はJSON 1つのみで、Markdownや前置きを出さないこと。
+
+対象:
+- app/src/main/java/com/tazawa/snapcal/notification/NotificationCenter.kt
+- app/src/main/java/com/tazawa/snapcal/notification/UndoReceiver.kt
+- app/src/test/java/com/tazawa/snapcal/notification/ResultNotificationIdentityTest.kt
+
+観点: 複数イベント通知の独立性、PendingIntent identity規則（extrasはidentityに含まれない点を含む）、contentHash検証、通知tag置換、Undoの所有権、安全性、Android API互換。API 36 E2Eでは2件追加→2通知→Bだけ削除→Aだけ削除を確認済み。リリースを止める実在問題のみblockingとし、blockingが1件でもあればok:false。
+
+JSON schema:
+{"ok":true,"phase":"diff","summary":"要約","issues":[{"severity":"blocking|advisory","category":"correctness|security|perf|maintainability|testing|style","file":"relative/path","lines":"42-45","problem":"説明","recommendation":"修正案"}],"notes_for_next_review":"メモ"}

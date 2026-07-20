@@ -8,10 +8,10 @@
 - [x] English setup and evaluator instructions prepared
 - [x] Codex workflow and GPT-5.6 contribution documented
 - [x] API 36 end-to-end evidence captured
-- [ ] Final demo MP4 is under 3 minutes and contains audible voiceover
+- [x] Final demo MP4 is under 3 minutes and contains audible voiceover (101.1 seconds, H.264/AAC)
 - [x] Final screenshots selected
 - [x] Release gate, signatures, and SHA-256 reverified
-- [ ] Final Codex review reports `ok: true`
+- [x] Final Codex review reports `ok: true` and `final_gate: pass`
 
 ## Owner-only publication and consent
 
