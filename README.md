@@ -4,6 +4,8 @@
 
 SnapCal turns a screenshot into a calendar event without uploading the image. On Android, the user can share one image to SnapCal or explicitly start screenshot monitoring. Bundled Japanese OCR and deterministic Kotlin rules run entirely on the device. SnapCal only auto-adds an event when the title, date, and start time are unambiguous and in the future; otherwise it safely does nothing.
 
+**Try it:** download the signed Android 10+ demo APK from the [v1.0.0 evaluator release](https://github.com/hiroyasu5/snapcal/releases/tag/v1.0.0). The release also includes SHA-256 files and a complete evaluator bundle.
+
 The app writes through Android's standard `CalendarContract`, adds a 30-minute reminder, and provides an Undo action in the result notification. No Google Calendar API key or Codex Calendar plugin is required. A visible, writable Google Calendar that supports reminders can appear as a destination when Android account sync and Google Calendar's **Share Google Calendar data with other apps** setting are enabled.
 
 ## Privacy and safety
