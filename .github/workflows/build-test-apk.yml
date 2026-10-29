@@ -1,0 +1,41 @@
+name: Build SnapCal test APK
+
+on:
+  push:
+    branches:
+      - build/test-apk
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out patched source
+        uses: actions/checkout@v4
+      - name: Install JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK command line tools
+        uses: android-actions/setup-android@v3
+      - name: Install Android 36 build components
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Run tests, builds and offline-privacy checks
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon clean releaseGate
+      - name: Upload installable test APK and SHA-256
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnapCal-appointment-title-test-APK
+          path: |
+            dist/app-demo-release.apk
+            dist/app-demo-release.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
