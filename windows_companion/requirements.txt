@@ -1,0 +1,5 @@
+Pillow>=10.4
+pytesseract>=0.3.13
+pystray>=0.19.5
+google-api-python-client>=2.150
+google-auth-oauthlib>=1.2
