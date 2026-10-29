@@ -37,10 +37,15 @@ TOKEN_FILE = ROOT / 'token.json'
 CALENDAR_ID = os.getenv('SNAPCAL_CALENDAR_ID', 'primary')
 
 
-def credentials() -> Credentials:
-    """Authorize once via the system browser; no credentials are checked into Git."""
+def credentials(force_consent: bool = False) -> Credentials:
+    """Recover expired/invalid tokens through Google's real browser OAuth flow."""
     ROOT.mkdir(parents=True, exist_ok=True)
-    saved = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPE) if TOKEN_FILE.exists() else None
+    try:
+        saved = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPE) if TOKEN_FILE.exists() else None
+    except (ValueError, OSError):
+        saved = None
+    if force_consent:
+        saved = None
     if saved and saved.valid:
         return saved
     if saved and saved.expired and saved.refresh_token:
@@ -118,7 +123,8 @@ class SnapCalWindows:
             'snapcal', self._tray_icon(), 'SnapCal - テキストから予定を登録',
             menu=pystray.Menu(
                 pystray.MenuItem('監視オン／オフ', lambda *_: self.commands.put(('toggle', None))),
-                pystray.MenuItem('Google認証の設定 / 再設定', lambda *_: self.commands.put(('setup', None))),
+                pystray.MenuItem('Google認証を更新', lambda *_: self.commands.put(('reauthorize', None))),
+                pystray.MenuItem('Google設定ファイルを変更', lambda *_: self.commands.put(('setup', None))),
                 pystray.MenuItem('終了', lambda *_: self.commands.put(('quit', None))),
             ),
         )
@@ -152,6 +158,8 @@ class SnapCalWindows:
                 break
             if action == 'setup':
                 self.setup()
+            elif action == 'reauthorize':
+                self.reauthorize()
             elif action == 'toggle':
                 self.active = not self.active
                 if self.active and not (CLIENT_FILE.is_file() or TOKEN_FILE.is_file()):
@@ -241,6 +249,25 @@ class SnapCalWindows:
                 self._enqueue_write(e)
             ttk.Button(window, text=label, command=selected).pack(fill='x', padx=12, pady=5)
         ttk.Button(window, text='登録しない', command=close).pack(pady=6)
+
+    def reauthorize(self) -> None:
+        if not CLIENT_FILE.is_file():
+            self.setup()
+            return
+        if not self.processing.acquire(blocking=False):
+            self.notify('登録処理中です。完了後に再認証してください')
+            return
+
+        def authorize() -> None:
+            try:
+                credentials(force_consent=True)
+                self.commands.put(('notify', 'Google認証が更新されました'))
+            except Exception:
+                self.commands.put(('notify', '再認証に失敗しました。接続・Google設定を確認してください'))
+            finally:
+                self.processing.release()
+
+        Thread(target=authorize, daemon=True).start()
 
     def setup(self) -> None:
         messagebox.showinfo(
