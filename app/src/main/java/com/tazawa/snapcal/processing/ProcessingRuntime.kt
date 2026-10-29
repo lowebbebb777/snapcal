@@ -55,16 +55,16 @@ class ProcessingRuntime(
         try {
             contentHash = hash(uri)
             when (repository.enqueue(contentHash, capturedAt)) {
-                is EnqueueResult.AlreadyExists -> return@withContext ProcessingOutcome.Ignored
+                is EnqueueResult.AlreadyExists -> return@withContext ProcessingOutcome.Ignored("同じ画像は処理済みです。新しいスクショで再試行してください")
                 is EnqueueResult.Created -> Unit
-                EnqueueResult.Conflict -> return@withContext ProcessingOutcome.Failed
+                EnqueueResult.Conflict -> return@withContext ProcessingOutcome.Failed("処理履歴が競合しています")
             }
             requireTransition(contentHash, RecordTransition.StartRecognizing)
 
             val recognized = recognizer.recognize(uri)
             if (recognized.isEmpty()) {
                 requireTransition(contentHash, RecordTransition.Ignored("ocr_empty"))
-                return@withContext ProcessingOutcome.Ignored
+                return@withContext ProcessingOutcome.Ignored("画像から文字を読み取れませんでした")
             }
 
             val candidate = extractor.extract(
@@ -85,20 +85,20 @@ class ProcessingRuntime(
                     contentHash,
                     RecordTransition.NeedsReview(classification.name.lowercase()),
                 )
-                return@withContext ProcessingOutcome.NeedsReview
+                return@withContext ProcessingOutcome.NeedsReview(ProcessingDiagnostic.describe(classification, candidate))
             }
 
             val event = checkNotNull(normalization.event)
             val calendarId = selectCalendarId() ?: run {
                 requireTransition(contentHash, RecordTransition.Failed("calendar_unavailable"))
-                return@withContext ProcessingOutcome.Failed
+                return@withContext ProcessingOutcome.Failed("登録先のカレンダーを確認できません")
             }
             val startInstant = event.start.atZone(zone).toInstant()
             val endInstant = event.end.atZone(zone).toInstant()
             val eventSignature = CalendarEventFactory.signature(event.title, startInstant, calendarId)
             if (repository.findByEventSignature(eventSignature) != null) {
                 requireTransition(contentHash, RecordTransition.Ignored("duplicate_event"))
-                return@withContext ProcessingOutcome.Ignored
+                return@withContext ProcessingOutcome.Ignored("同じ予定が登録済みです")
             }
 
             try {
@@ -106,7 +106,7 @@ class ProcessingRuntime(
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 requireTransition(contentHash, RecordTransition.Ignored("duplicate_event_race"))
-                return@withContext ProcessingOutcome.Ignored
+                return@withContext ProcessingOutcome.Ignored("同じ予定の登録処理が重複しました")
             }
             val operationToken = UUID.randomUUID().toString()
             requireTransition(
@@ -145,7 +145,7 @@ class ProcessingRuntime(
                         contentHash,
                         RecordTransition.Failed("calendar_known_failure"),
                     )
-                    ProcessingOutcome.Failed
+                    ProcessingOutcome.Failed("カレンダー書き込み権限・同期先を確認してください")
                 }
             }
         } catch (error: CancellationException) {
@@ -153,7 +153,7 @@ class ProcessingRuntime(
             throw error
         } catch (_: Exception) {
             settleUnexpected(contentHash, "processing_failed")
-            ProcessingOutcome.Failed
+            ProcessingOutcome.Failed("画像の解析または処理に失敗しました")
         }
     }
 
@@ -177,17 +177,17 @@ class ProcessingRuntime(
             }
             AddReconcileResult.NoMatch -> {
                 requireTransition(contentHash, RecordTransition.Failed("add_not_committed"))
-                ProcessingOutcome.Failed
+                ProcessingOutcome.Failed("予定の書き込みが完了しませんでした")
             }
             AddReconcileResult.SignatureMismatch,
             is AddReconcileResult.Ambiguous,
             -> {
                 requireTransition(contentHash, RecordTransition.Failed("add_reconcile_unsafe"))
-                ProcessingOutcome.Failed
+                ProcessingOutcome.Failed("登録結果を安全に確認できませんでした")
             }
             AddReconcileResult.PermissionDenied,
             AddReconcileResult.ProviderUnavailable,
-            -> ProcessingOutcome.Failed
+            -> ProcessingOutcome.Failed("カレンダーの応答を確認できません")
         }
     }
 
