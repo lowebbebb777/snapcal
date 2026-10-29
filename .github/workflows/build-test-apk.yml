@@ -5,6 +5,14 @@ on:
     branches:
       - build/test-apk
       - feature/personal-calendar-ux
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/build-test-apk.yml'
   workflow_dispatch:
 
 permissions:
