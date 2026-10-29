@@ -41,6 +41,8 @@ class Event:
     title: str
     start: datetime
     end: datetime
+    location: str = ''
+    description: str = ''
 
     def __post_init__(self) -> None:
         if not self.title or self.end <= self.start:
