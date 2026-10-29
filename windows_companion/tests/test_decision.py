@@ -43,6 +43,13 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(len(d.events), 2)
         self.assertEqual([x.start.day for x in d.events], [2, 3])
 
+    def test_user_report_two_test_events_require_visible_two_choice_dialog(self):
+        copied = 'テスト会議A 2026/11/12 14:10\nテスト面談B 2026/11/13 15:20'
+        d = decide(copied, NOW)
+        self.assertEqual(d.mode, 'review')
+        self.assertEqual([event.title for event in d.events], ['テスト会議A', 'テスト面談B'])
+        self.assertEqual([event.start.day for event in d.events], [12, 13])
+
     def test_one_uncertain_event_requires_one_click(self):
         d = decide('新着ニュース 2026/11/5 16:50', NOW)
         self.assertEqual(d.mode, 'review')
