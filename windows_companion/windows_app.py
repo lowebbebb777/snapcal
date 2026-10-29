@@ -35,7 +35,7 @@ ROOT = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'SnapCal'
 CLIENT_FILE = ROOT / 'credentials.json'
 TOKEN_FILE = ROOT / 'token.json'
 CALENDAR_ID = os.getenv('SNAPCAL_CALENDAR_ID', 'primary')
-APP_VERSION = '2026.10.29-details1'
+APP_VERSION = '2026.10.29-details2'
 
 
 def credentials(force_consent: bool = False) -> Credentials:
@@ -317,6 +317,8 @@ class SnapCalWindows:
                 label += '\n場所: ' + event.location
             if event.description:
                 label += '\nメモ: ' + event.description
+            if event.needs_review:
+                label += '\n注意: 読み取れない詳細があります。表示内容を確認'
             def selected(e=event) -> None:
                 close()
                 self._enqueue_write(e)
