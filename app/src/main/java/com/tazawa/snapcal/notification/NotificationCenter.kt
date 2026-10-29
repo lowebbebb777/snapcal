@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.tazawa.snapcal.MainActivity
 import com.tazawa.snapcal.R
 import com.tazawa.snapcal.capture.MonitoringService
+import com.tazawa.snapcal.capture.ReviewChoiceActivity
 import com.tazawa.snapcal.processing.ProcessingOutcome
 
 class NotificationCenter(
@@ -69,14 +70,21 @@ class NotificationCenter(
     fun postResult(outcome: ProcessingOutcome) {
         val title = when (outcome) {
             is ProcessingOutcome.Added -> "予定を1件追加しました"
-            is ProcessingOutcome.NeedsReview -> "予定は追加しませんでした"
+            is ProcessingOutcome.NeedsReview -> if (outcome.reviewSessionId != null) "予定候補を選択できます" else "予定は追加しませんでした"
             is ProcessingOutcome.Ignored -> "予定情報を確認できませんでした"
             is ProcessingOutcome.Failed -> "画像を処理できませんでした"
+        }
+        val sessionId = (outcome as? ProcessingOutcome.NeedsReview)?.reviewSessionId
+        val action = if (sessionId != null) {
+            ReviewChoiceActivity.intent(context, sessionId)
+                .setData(Uri.parse("snapcal://review/$sessionId"))
+        } else {
+            Intent(context, MainActivity::class.java)
         }
         val openIntent = PendingIntent.getActivity(
             context,
             10,
-            Intent(context, MainActivity::class.java),
+            action,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_RESULTS)
@@ -84,7 +92,7 @@ class NotificationCenter(
             .setContentTitle(title)
             .setContentText(when (outcome) {
                 is ProcessingOutcome.Added -> "カレンダーへ追加しました"
-                is ProcessingOutcome.NeedsReview -> outcome.detail
+                is ProcessingOutcome.NeedsReview -> if (outcome.reviewSessionId != null) "タップして候補から1件選択" else outcome.detail
                 is ProcessingOutcome.Ignored -> outcome.detail
                 is ProcessingOutcome.Failed -> outcome.detail
             })
