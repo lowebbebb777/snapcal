@@ -3,10 +3,8 @@ package com.tazawa.snapcal
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -62,16 +60,13 @@ class MainActivity : ComponentActivity() {
     private var monitoringEnabled by mutableStateOf(false)
     private var writableCalendars by mutableStateOf<List<WritableCalendar>>(emptyList())
     private var selectedCalendarId by mutableStateOf(MonitoringPreferences.NO_CALENDAR)
-    private var pendingStart = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
         if (requiredPermissions().all { result[it] == true || checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) {
             refreshWritableCalendars()
-            requestOverlayOrStart()
-        } else {
-            pendingStart = false
+            startMonitoring()
         }
     }
 
@@ -104,7 +99,6 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         if (::monitoringPreferences.isInitialized) monitoringEnabled = monitoringPreferences.enabled
         if (::monitoringPreferences.isInitialized && hasCalendarPermission()) refreshWritableCalendars()
-        if (pendingStart && Settings.canDrawOverlays(this)) startMonitoring()
     }
 
     private fun requestCalendarAccess() {
@@ -139,33 +133,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun beginMonitoringSetup() {
-        pendingStart = true
         val missing = requiredPermissions().filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
-        if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray()) else requestOverlayOrStart()
-    }
-
-    private fun requestOverlayOrStart() {
-        if (!Settings.canDrawOverlays(this)) {
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName"),
-                ),
-            )
-        } else {
-            startMonitoring()
-        }
+        if (missing.isNotEmpty()) permissionLauncher.launch(missing.toTypedArray()) else startMonitoring()
     }
 
     private fun startMonitoring() {
-        pendingStart = false
         startForegroundService(Intent(this, MonitoringService::class.java).setAction(MonitoringService.ACTION_START))
         monitoringPreferences.enabled = true
         monitoringEnabled = true
     }
 
     private fun stopMonitoring() {
-        pendingStart = false
         startService(Intent(this, MonitoringService::class.java).setAction(MonitoringService.ACTION_STOP))
         monitoringPreferences.enabled = false
         monitoringEnabled = false
@@ -334,7 +312,7 @@ private fun SnapCalApp(
                             )
                         }
                         Text(
-                            text = "LINEの横にあるようなバブルを画面端へ表示し、新しいスクショだけを処理します。",
+                            text = "画面にバブルを表示せず、新しいスクショをバックグラウンドで処理します。監視は通知から停止できます。",
                             color = muted,
                             fontSize = 13.sp,
                         )
