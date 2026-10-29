@@ -69,9 +69,9 @@ class NotificationCenter(
     fun postResult(outcome: ProcessingOutcome) {
         val title = when (outcome) {
             is ProcessingOutcome.Added -> "予定を1件追加しました"
-            ProcessingOutcome.NeedsReview -> "予定は追加しませんでした"
-            ProcessingOutcome.Ignored -> "予定情報を確認できませんでした"
-            ProcessingOutcome.Failed -> "画像を処理できませんでした"
+            is ProcessingOutcome.NeedsReview -> "予定は追加しませんでした"
+            is ProcessingOutcome.Ignored -> "予定情報を確認できませんでした"
+            is ProcessingOutcome.Failed -> "画像を処理できませんでした"
         }
         val openIntent = PendingIntent.getActivity(
             context,
@@ -82,7 +82,12 @@ class NotificationCenter(
         val notification = NotificationCompat.Builder(context, CHANNEL_RESULTS)
             .setSmallIcon(R.drawable.ic_snapcal_notification)
             .setContentTitle(title)
-            .setContentText("詳細は端末のロックを解除して確認してください")
+            .setContentText(when (outcome) {
+                is ProcessingOutcome.Added -> "カレンダーへ追加しました"
+                is ProcessingOutcome.NeedsReview -> outcome.detail
+                is ProcessingOutcome.Ignored -> outcome.detail
+                is ProcessingOutcome.Failed -> outcome.detail
+            })
             .setContentIntent(openIntent)
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
