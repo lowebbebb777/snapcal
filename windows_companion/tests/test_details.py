@@ -127,6 +127,26 @@ class DetailsTests(unittest.TestCase):
         d = decide('2026/11/12 14:10\n場所: 福岡支店', NOW)
         self.assertEqual(d.mode, 'ignore')
 
+    def test_explicit_end_time_is_reflected_in_event(self):
+        d = decide('定例会議 2026/11/12 14:10\n終了時刻: 16:45', NOW)
+        self.assertEqual(d.mode, 'auto')
+        self.assertEqual(d.events[0].end, datetime(2026, 11, 12, 16, 45))
+
+    def test_invalid_explicit_end_time_forces_confirmation(self):
+        d = decide('定例会議 2026/11/12 14:10\n終了時刻: 13:00', NOW)
+        self.assertEqual(d.mode, 'review')
+        self.assertTrue(d.events[0].needs_review)
+
+    def test_non_time_end_value_forces_confirmation(self):
+        d = decide('定例会議 2026/11/12 14:10\n終了時刻: 未定', NOW)
+        self.assertEqual(d.mode, 'review')
+        self.assertTrue(d.events[0].needs_review)
+
+    def test_two_different_end_times_are_not_guessed(self):
+        d = decide('定例会議 2026/11/12 14:10\n終了: 15:45\n終了: 16:45', NOW)
+        self.assertEqual(d.mode, 'review')
+        self.assertTrue(d.events[0].needs_review)
+
     def test_old_three_field_event_remains_valid(self):
         a = Event('会議', datetime(2026, 11, 12, 14), datetime(2026, 11, 12, 15))
         self.assertEqual(a.location, '')
