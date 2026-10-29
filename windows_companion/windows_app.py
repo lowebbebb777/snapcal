@@ -1,49 +1,41 @@
-"""SnapCal Windows companion: Win+Shift+S screenshot -> local OCR -> Google Calendar."""
+"""SnapCal for Windows: copied text -> zero-click Google Calendar registration.
+
+One notification-area process. No image watcher, OCR service or second app.
+Copied text is processed in memory; only selected calendar event fields are
+transmitted to Google after user-granted OAuth permission.
+"""
 from __future__ import annotations
 
-import ctypes
-from datetime import datetime
+from datetime import datetime, timedelta
+from hashlib import sha256
+import json
 import os
 from pathlib import Path
+from queue import Empty, Queue
+import shutil
 from threading import Lock, Thread
+import time
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 
-from PIL import ImageGrab, Image, ImageDraw
-import pytesseract
-from pytesseract import Output
+from PIL import Image, ImageDraw
 import pystray
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from core import Event, extract
+from core import Event, parse_text
 
 SCOPE = ['https://www.googleapis.com/auth/calendar.events']
-ROOT = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'SnapCalWindows'
+ROOT = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'SnapCal'
 CLIENT_FILE = ROOT / 'credentials.json'
 TOKEN_FILE = ROOT / 'token.json'
 CALENDAR_ID = os.getenv('SNAPCAL_CALENDAR_ID', 'primary')
 
 
-def recognize_lines(image: Image.Image) -> list[str]:
-    if path := os.getenv('TESSERACT_CMD'):
-        pytesseract.pytesseract.tesseract_cmd = path
-    data = pytesseract.image_to_data(
-        image.convert('RGB'), lang='jpn+eng', output_type=Output.DICT,
-        config='--psm 11',
-    )
-    grouped: dict[tuple[int, int, int], list[tuple[int, str]]] = {}
-    for i, word in enumerate(data['text']):
-        if not word.strip():
-            continue
-        group = (data['block_num'][i], data['par_num'][i], data['line_num'][i])
-        grouped.setdefault(group, []).append((data['left'][i], word))
-    return [' '.join(word for _, word in sorted(words)) for words in grouped.values()]
-
-
 def credentials() -> Credentials:
+    """Authorize once via the system browser; no credentials are checked into Git."""
     ROOT.mkdir(parents=True, exist_ok=True)
     saved = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPE) if TOKEN_FILE.exists() else None
     if saved and saved.valid:
@@ -52,125 +44,223 @@ def credentials() -> Credentials:
         saved.refresh(Request())
     else:
         if not CLIENT_FILE.is_file():
-            raise FileNotFoundError('Google OAuth Desktop アプリの credentials.json が見つかりません: ' + str(CLIENT_FILE))
-        saved = InstalledAppFlow.from_client_secrets_file(str(CLIENT_FILE), SCOPE).run_local_server(port=0)
+            raise FileNotFoundError('Google Calendar OAuth 設定が必要です。トレイから設定してください。')
+        saved = InstalledAppFlow.from_client_secrets_file(
+            str(CLIENT_FILE), SCOPE,
+        ).run_local_server(port=0)
     TOKEN_FILE.write_text(saved.to_json(), encoding='utf-8')
     return saved
 
 
-def add_to_google_calendar(event: Event) -> None:
-    calendar = build('calendar', 'v3', credentials=credentials(), cache_discovery=False)
+def _already_registered(service, event: Event) -> bool:
+    """Read before write, including events created on Android or other PCs."""
+    start = event.start.astimezone()
+    items = service.events().list(
+        calendarId=CALENDAR_ID,
+        timeMin=(start - timedelta(seconds=1)).isoformat(),
+        timeMax=(start + timedelta(minutes=1)).isoformat(),
+        singleEvents=True,
+        maxResults=100,
+    ).execute().get('items', [])
+    for candidate in items:
+        raw = candidate.get('start', {}).get('dateTime')
+        if not raw or candidate.get('summary') != event.title:
+            continue
+        try:
+            existing = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        except ValueError:
+            continue
+        if existing.astimezone() == start:
+            return True
+    return False
+
+
+def add_to_google_calendar(event: Event) -> bool:
+    """Return False for an already-present event, rather than duplicating it."""
+    service = build('calendar', 'v3', credentials=credentials(), cache_discovery=False)
+    if _already_registered(service, event):
+        return False
     body = {
         'summary': event.title,
         'start': {'dateTime': event.start.astimezone().isoformat()},
         'end': {'dateTime': event.end.astimezone().isoformat()},
         'reminders': {'useDefault': True},
     }
-    calendar.events().insert(calendarId=CALENDAR_ID, body=body).execute()
+    service.events().insert(calendarId=CALENDAR_ID, body=body).execute()
+    return True
 
 
 class SnapCalWindows:
+    POLL_MS = 700
+
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.withdraw()
-        self.root.title('SnapCal Windows')
-        self.last_clipboard_version = ctypes.windll.user32.GetClipboardSequenceNumber()
+        self.root.title('SnapCal')
+        self.commands: Queue[tuple[str, object]] = Queue()
         self.processing = Lock()
-        self.active = True
+        self.active = CLIENT_FILE.is_file() or TOKEN_FILE.is_file()
+        self.last_clipboard = self._read_clipboard()
+        self.last_submitted: dict[str, float] = {}
+        self.choosing = False
         self.icon = pystray.Icon(
-            'snapcal_windows', self._tray_icon(), 'SnapCal Windows - 監視中',
+            'snapcal', self._tray_icon(), 'SnapCal - テキストから予定を登録',
             menu=pystray.Menu(
-                pystray.MenuItem('画面全体を登録', self.capture_screen),
-                pystray.MenuItem('監視オン/オフ', self.toggle),
-                pystray.MenuItem('終了', self.quit),
+                pystray.MenuItem('監視オン／オフ', lambda *_: self.commands.put(('toggle', None))),
+                pystray.MenuItem('Googleカレンダーの初回設定', lambda *_: self.commands.put(('setup', None))),
+                pystray.MenuItem('終了', lambda *_: self.commands.put(('quit', None))),
             ),
         )
 
     @staticmethod
     def _tray_icon() -> Image.Image:
         img = Image.new('RGB', (64, 64), '#10241F')
-        pen = ImageDraw.Draw(img)
-        pen.rounded_rectangle((6, 6, 58, 58), radius=14, outline='#54F0BA', width=4)
-        pen.line((18, 33, 28, 43, 47, 22), fill='#54F0BA', width=5, joint='curve')
+        draw = ImageDraw.Draw(img)
+        draw.rounded_rectangle((6, 6, 58, 58), radius=12, outline='#54F0BA', width=4)
+        draw.line((17, 33, 28, 43, 47, 20), fill='#54F0BA', width=6)
         return img
+
+    def _read_clipboard(self) -> str:
+        try:
+            value = self.root.clipboard_get()
+        except (tk.TclError, UnicodeError):
+            return ''
+        return value if isinstance(value, str) and len(value) <= 5000 else ''
 
     def notify(self, message: str) -> None:
         try:
-            self.icon.notify(message, 'SnapCal Windows')
+            self.icon.notify(message, 'SnapCal')
         except Exception:
             pass
 
-    def check_clipboard(self) -> None:
-        if self.active:
-            seq = ctypes.windll.user32.GetClipboardSequenceNumber()
-            if seq != self.last_clipboard_version:
-                self.last_clipboard_version = seq
-                try:
-                    image = ImageGrab.grabclipboard()
-                    if isinstance(image, Image.Image):
-                        self.dispatch(image.copy())
-                except (OSError, ValueError):
-                    pass
-        self.root.after(650, self.check_clipboard)
+    def _poll(self) -> None:
+        while True:
+            try:
+                action, payload = self.commands.get_nowait()
+            except Empty:
+                break
+            if action == 'setup':
+                self.setup()
+            elif action == 'toggle':
+                self.active = not self.active
+                if self.active and not (CLIENT_FILE.is_file() or TOKEN_FILE.is_file()):
+                    self.active = False
+                    self.setup()
+                else:
+                    self.notify('コピー監視' + ('を開始しました' if self.active else 'を停止しました'))
+            elif action == 'choose':
+                self.choose(payload)
+            elif action == 'notify':
+                self.notify(str(payload))
+            elif action == 'quit':
+                self._quit()
 
-    def dispatch(self, image: Image.Image) -> None:
-        if not self.processing.acquire(blocking=False):
+        value = self._read_clipboard()
+        if value != self.last_clipboard:
+            self.last_clipboard = value
+            if self.active and value:
+                self._handle_text(value)
+        self.root.after(self.POLL_MS, self._poll)
+
+    def _handle_text(self, text: str) -> None:
+        # Parse synchronously: pure deterministic rules, no OCR/LLM/network.
+        events = parse_text(text, now=datetime.now())
+        if not events:
             return
-        Thread(target=self._process, args=(image,), daemon=True).start()
+        if len(events) == 1:
+            self._enqueue_write(events[0])
+        else:
+            self.choose(events)
 
-    def _process(self, image: Image.Image) -> None:
+    def _event_key(self, event: Event) -> str:
+        raw = f'{event.title}\0{event.start.isoformat()}\0{event.end.isoformat()}'
+        return sha256(raw.encode('utf-8')).hexdigest()
+
+    def _enqueue_write(self, event: Event) -> None:
+        key = self._event_key(event)
+        if key in self.last_submitted:
+            self.notify('同じ予定は今回すでに処理しています')
+            return
+        if not self.processing.acquire(blocking=False):
+            self.notify('処理中です。次の予定は処理終了後にコピーしてください')
+            return
+        self.last_submitted[key] = time.monotonic()
+        if len(self.last_submitted) > 200:
+            oldest = min(self.last_submitted, key=self.last_submitted.get)
+            self.last_submitted.pop(oldest, None)
+        Thread(target=self._write, args=(event, key), daemon=True).start()
+
+    def _write(self, event: Event, key: str) -> None:
         try:
-            options = extract(recognize_lines(image), now=datetime.now())
-            if not options:
-                return
-            if len(options) == 1:
-                self._commit(options[0])
-            else:
-                self.root.after(0, lambda: self.choose(options))
-        except Exception as exc:
-            self.notify('解析できませんでした。Tesseractの日本語データなどを確認してください。')
-            print(type(exc).__name__, str(exc))
+            added = add_to_google_calendar(event)
+            msg = 'Googleカレンダーに予定を追加しました' if added else '同じ予定が登録済みです'
+            self.commands.put(('notify', msg))
+        except Exception:
+            # Clear the local key to permit re-trying a temporary auth/network failure.
+            self.commands.put(('failed', key))
+            self.commands.put(('notify', '登録できませんでした。Google認証・接続を確認してください'))
         finally:
             self.processing.release()
 
-    def _commit(self, event: Event) -> None:
-        try:
-            add_to_google_calendar(event)
-            self.notify('Googleカレンダーに予定を追加しました。')
-        except Exception as exc:
-            self.notify('予定を登録できませんでした。OAuth設定を確認してください。')
-            print(type(exc).__name__, str(exc))
-
-    def choose(self, options: list[Event]) -> None:
+    def choose(self, events: list[Event]) -> None:
+        if self.choosing:
+            return
+        self.choosing = True
         window = tk.Toplevel(self.root)
-        window.title('登録する予定を選ぶ')
-        window.geometry('430x' + str(min(620, 130 + len(options) * 88)))
+        window.title('SnapCal — どの予定ですか？')
+        window.geometry(f'450x{min(640, 120 + len(events) * 85)}')
         window.attributes('-topmost', True)
-        ttk.Label(window, text='登録したい予定を1件クリック', font=('Yu Gothic UI', 13, 'bold')).pack(pady=18)
-        for event in options:
-            label = f'{event.title}\n{event.start:%Y/%m/%d %H:%M} - {event.end:%H:%M}'
-            def selected(e=event):
-                window.destroy()
-                Thread(target=self._commit, args=(e,), daemon=True).start()
-            ttk.Button(window, text=label, command=selected).pack(fill='x', padx=16, pady=5)
-        ttk.Button(window, text='登録せず閉じる', command=window.destroy).pack(pady=12)
+        ttk.Label(window, text='登録する予定を1件選択', font=('Yu Gothic UI', 13, 'bold')).pack(pady=14)
 
-    def capture_screen(self, *_args: object) -> None:
-        self.dispatch(ImageGrab.grab(all_screens=True))
+        def close() -> None:
+            self.choosing = False
+            window.destroy()
 
-    def toggle(self, *_args: object) -> None:
-        self.active = not self.active
-        self.icon.title = 'SnapCal Windows - ' + ('監視中' if self.active else '停止中')
-        self.notify('スクリーンショット監視' + ('を開始しました' if self.active else 'を停止しました'))
+        window.protocol('WM_DELETE_WINDOW', close)
+        for event in events:
+            label = f'{event.title}\n{event.start:%Y/%m/%d %H:%M} – {event.end:%H:%M}'
+            def selected(e=event) -> None:
+                close()
+                self._enqueue_write(e)
+            ttk.Button(window, text=label, command=selected).pack(fill='x', padx=12, pady=5)
+        ttk.Button(window, text='登録しない', command=close).pack(pady=6)
 
-    def quit(self, *_args: object) -> None:
+    def setup(self) -> None:
+        messagebox.showinfo(
+            'SnapCal 初期設定',
+            'Google Calendar API の「デスクトップアプリ」用 OAuth '
+            'credentials.json を選択してください。\n'
+            '認証後はコピーした予定文章を自動登録します。',
+        )
+        path = filedialog.askopenfilename(
+            title='Google OAuth 設定ファイルを選ぶ',
+            filetypes=[('Google OAuth JSON', '*.json')],
+        )
+        if not path:
+            return
+        try:
+            with open(path, 'r', encoding='utf-8') as stream:
+                obj = json.load(stream)
+            if 'installed' not in obj or not obj['installed'].get('client_id'):
+                raise ValueError('Google Desktop 用 OAuth JSON ではありません')
+            ROOT.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path, CLIENT_FILE)
+            TOKEN_FILE.unlink(missing_ok=True)
+            self.active = True
+            self.notify('初回設定が完了しました。次の予定をコピーすると認証が始まります')
+        except (OSError, ValueError, json.JSONDecodeError):
+            messagebox.showerror('SnapCal', 'OAuthの設定ファイルを読み込めませんでした')
+
+    def _quit(self) -> None:
         self.active = False
         self.icon.stop()
-        self.root.after(0, self.root.quit)
+        self.root.quit()
 
     def run(self) -> None:
         Thread(target=self.icon.run, daemon=True).start()
-        self.root.after(650, self.check_clipboard)
+        if not self.active:
+            self.root.after(400, self.setup)
+        self.root.after(self.POLL_MS, self._poll)
         self.root.mainloop()
 
 
