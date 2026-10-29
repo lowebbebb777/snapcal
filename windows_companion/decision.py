@@ -120,7 +120,11 @@ def decide(text: str, now: datetime | None = None) -> Decision:
     event = events[0]
     # Notes can include sensitive information. Always preview them before
     # uploading to Google Calendar; never silently ignore malformed fields.
-    if event.description or (has_explicit_details(prepared) and not event.location):
+    detail_was_present = has_explicit_details(prepared)
+    if (event.description or event.needs_review or (
+        detail_was_present and not event.location
+        and event.end == event.start + timedelta(hours=1)
+    )):
         return Decision('review', events, 'details_confirmation')
     has_auto_cue = any(cue in event.title for cue in AUTO_CUES)
     short_text = len(s) <= 220 and s.count('\n') <= 3
