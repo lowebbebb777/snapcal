@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - build/test-apk
+      - feature/personal-calendar-ux
   workflow_dispatch:
 
 permissions:
@@ -35,7 +36,7 @@ jobs:
       - name: Upload installable test APK and SHA-256
         uses: actions/upload-artifact@v4
         with:
-          name: SnapCal-appointment-title-test-APK
+          name: SnapCal-personal-ux-APK
           path: |
             dist/app-demo-release.apk
             dist/app-demo-release.apk.sha256
