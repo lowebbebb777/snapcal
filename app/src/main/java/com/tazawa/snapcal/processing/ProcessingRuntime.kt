@@ -18,6 +18,9 @@ import com.tazawa.snapcal.data.SnapCalDatabase
 import com.tazawa.snapcal.domain.AutoAddGate
 import com.tazawa.snapcal.domain.Classification
 import com.tazawa.snapcal.domain.EventNormalizer
+import com.tazawa.snapcal.domain.ReviewOptionBuilder
+import com.tazawa.snapcal.domain.NormalizedEvent
+import com.tazawa.snapcal.domain.NormalizationResult
 import com.tazawa.snapcal.domain.OcrBounds
 import com.tazawa.snapcal.domain.OcrLine
 import com.tazawa.snapcal.domain.TextEvidenceExtractor
@@ -47,6 +50,7 @@ class ProcessingRuntime(
     private val calendarGateway = CalendarGateway(appContext.contentResolver)
     private val preferences = MonitoringPreferences(appContext)
     private val extractor = TextEvidenceExtractor()
+    private val reviewOptionBuilder = ReviewOptionBuilder()
     private val normalizer = EventNormalizer()
     private val gate = AutoAddGate()
 
@@ -67,14 +71,13 @@ class ProcessingRuntime(
                 return@withContext ProcessingOutcome.Ignored("画像から文字を読み取れませんでした")
             }
 
-            val candidate = extractor.extract(
-                recognized.map { line ->
-                    OcrLine(
-                        text = line.text,
-                        bounds = OcrBounds(line.left, line.top, line.right, line.bottom),
-                    )
-                },
-            )
+            val ocrLines = recognized.map { line ->
+                OcrLine(
+                    text = line.text,
+                    bounds = OcrBounds(line.left, line.top, line.right, line.bottom),
+                )
+            }
+            val candidate = extractor.extract(ocrLines)
             val zone = ZoneId.systemDefault()
             val captureReference = Instant.ofEpochMilli(capturedAt).atZone(zone).toLocalDateTime()
             val now = LocalDateTime.now(zone)
@@ -85,7 +88,15 @@ class ProcessingRuntime(
                     contentHash,
                     RecordTransition.NeedsReview(classification.name.lowercase()),
                 )
-                return@withContext ProcessingOutcome.NeedsReview(ProcessingDiagnostic.describe(classification, candidate))
+                val reviewSession = if (classification == Classification.AMBIGUOUS ||
+                    classification == Classification.INVALID
+                ) {
+                    ReviewSessionStore.put(reviewOptionBuilder.build(ocrLines, captureReference, now))
+                } else null
+                return@withContext ProcessingOutcome.NeedsReview(
+                    ProcessingDiagnostic.describe(classification, candidate),
+                    reviewSession,
+                )
             }
 
             val event = checkNotNull(normalization.event)
@@ -156,6 +167,80 @@ class ProcessingRuntime(
             ProcessingOutcome.Failed("画像の解析または処理に失敗しました")
         }
     }
+
+    /**
+     * A human-selected candidate uses the same persisted write/reconciliation
+     * mechanism as automatic registration. Only a validated in-memory candidate
+     * may reach this method; no raw OCR content is persisted.
+     */
+    suspend fun addReviewedEvent(event: NormalizedEvent): ProcessingOutcome =
+        withContext(Dispatchers.IO) {
+            val zone = ZoneId.systemDefault()
+            val now = LocalDateTime.now(zone)
+            val check = gate.classify(
+                NormalizationResult(classification = Classification.AUTO_ADD, event = event),
+                now,
+            )
+            if (check != Classification.AUTO_ADD) {
+                return@withContext ProcessingOutcome.NeedsReview(
+                    "選択した予定の日時が有効ではありません（${check.name}）",
+                )
+            }
+            val hash = MessageDigest.getInstance("SHA-256")
+                .digest(UUID.randomUUID().toString().toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            try {
+                when (repository.enqueue(hash, System.currentTimeMillis())) {
+                    is EnqueueResult.Created -> Unit
+                    else -> return@withContext ProcessingOutcome.Failed("登録処理を開始できません")
+                }
+                requireTransition(hash, RecordTransition.StartRecognizing)
+                val calendarId = selectCalendarId() ?: run {
+                    requireTransition(hash, RecordTransition.Failed("calendar_unavailable"))
+                    return@withContext ProcessingOutcome.Failed("登録先のカレンダーがありません")
+                }
+                val startInstant = event.start.atZone(zone).toInstant()
+                val endInstant = event.end.atZone(zone).toInstant()
+                val signature = CalendarEventFactory.signature(event.title, startInstant, calendarId)
+                if (repository.findByEventSignature(signature) != null) {
+                    requireTransition(hash, RecordTransition.Ignored("duplicate_event"))
+                    return@withContext ProcessingOutcome.Ignored("同じ予定が登録済みです")
+                }
+                requireTransition(hash, RecordTransition.CandidateReady(signature))
+                val token = UUID.randomUUID().toString()
+                requireTransition(hash, RecordTransition.BeginAdding(token, calendarId))
+                val draft = CalendarEventDraft(event.title, startInstant, endInstant, zone.id)
+                return@withContext when (
+                    val result = calendarGateway.addEvent(calendarId, draft, token)
+                ) {
+                    is AddEventResult.Added -> {
+                        requireTransition(
+                            hash, RecordTransition.AutoAdded(calendarId, result.eventId),
+                        )
+                        ProcessingOutcome.Added(hash)
+                    }
+                    is AddEventResult.ReconcileRequired -> reconcileUnknownAdd(
+                        contentHash = hash,
+                        calendarId = calendarId,
+                        operationToken = result.operationToken,
+                        signature = result.signature,
+                    )
+                    AddEventResult.PermissionDenied,
+                    AddEventResult.CalendarUnavailable,
+                    AddEventResult.ReminderUnsupported,
+                    AddEventResult.ProviderUnavailable -> {
+                        requireTransition(hash, RecordTransition.Failed("calendar_known_failure"))
+                        ProcessingOutcome.Failed("カレンダーへの登録に失敗しました")
+                    }
+                }
+            } catch (error: CancellationException) {
+                settleUnexpected(hash, "review_cancelled")
+                throw error
+            } catch (_: Exception) {
+                settleUnexpected(hash, "review_processing_failed")
+                ProcessingOutcome.Failed("候補の登録処理に失敗しました")
+            }
+        }
 
     private suspend fun reconcileUnknownAdd(
         contentHash: String,
