@@ -35,7 +35,7 @@ ROOT = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'SnapCal'
 CLIENT_FILE = ROOT / 'credentials.json'
 TOKEN_FILE = ROOT / 'token.json'
 CALENDAR_ID = os.getenv('SNAPCAL_CALENDAR_ID', 'primary')
-APP_VERSION = '2026.10.29-diagnostic2'
+APP_VERSION = '2026.10.29-details1'
 
 
 def credentials(force_consent: bool = False) -> Credentials:
@@ -103,6 +103,10 @@ def add_to_google_calendar(event: Event) -> bool:
         'end': {'dateTime': event.end.astimezone().isoformat()},
         'reminders': {'useDefault': True},
     }
+    if event.location:
+        body['location'] = event.location
+    if event.description:
+        body['description'] = event.description
     service.events().insert(calendarId=CALENDAR_ID, body=body).execute()
     return True
 
@@ -282,7 +286,11 @@ class SnapCalWindows:
         self.last_decision = '候補選択画面を開きました（自動登録はしていません）'
         window = tk.Toplevel(self.root)
         window.title('SnapCal — どの予定ですか？')
-        window.geometry(f'450x{min(640, 120 + len(events) * 85)}')
+        content_height = sum(
+            82 + (26 if e.location else 0) + (55 if e.description else 0)
+            for e in events
+        )
+        window.geometry(f'540x{min(760, 120 + content_height)}')
         window.attributes('-topmost', True)
         # A hidden root and a tray icon can leave a child behind the browser.
         # Explicitly raise the single review window without showing a bubble.
@@ -290,7 +298,7 @@ class SnapCalWindows:
         window.focus_force()
         heading = (
             '予定として登録しますか？（内容を確認）'
-            if reason == 'uncertain_intent'
+            if reason in ('uncertain_intent', 'details_confirmation')
             else '登録する予定を1件選択'
         )
         ttk.Label(window, text=heading, font=('Yu Gothic UI', 13, 'bold')).pack(pady=14)
@@ -301,7 +309,14 @@ class SnapCalWindows:
 
         window.protocol('WM_DELETE_WINDOW', close)
         for event in events:
-            label = f'{event.title}\n{event.start:%Y/%m/%d %H:%M} – {event.end:%H:%M}'
+            label = (
+                f'{event.title}\n'
+                f'{event.start:%Y/%m/%d %H:%M} – {event.end:%H:%M}'
+            )
+            if event.location:
+                label += '\n場所: ' + event.location
+            if event.description:
+                label += '\nメモ: ' + event.description
             def selected(e=event) -> None:
                 close()
                 self._enqueue_write(e)
