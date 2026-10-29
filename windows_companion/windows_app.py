@@ -117,12 +117,15 @@ class SnapCalWindows:
         self.processing = Lock()
         self.active = CLIENT_FILE.is_file() or TOKEN_FILE.is_file()
         self.last_clipboard = self._read_clipboard()
+        self.last_clipboard_seq = self._clipboard_sequence()
+        self.last_decision = '監視待機中。コピーすると予定かどうか判定します'
         self.last_submitted: dict[str, float] = {}
         self.choosing = False
         self.icon = pystray.Icon(
             'snapcal', self._tray_icon(), 'SnapCal - テキストから予定を登録',
             menu=pystray.Menu(
                 pystray.MenuItem('監視オン／オフ', lambda *_: self.commands.put(('toggle', None))),
+                pystray.MenuItem('現在の状態・直近の判定', lambda *_: self.commands.put(('status', None))),
                 pystray.MenuItem('Google認証を更新', lambda *_: self.commands.put(('reauthorize', None))),
                 pystray.MenuItem('Google設定ファイルを変更', lambda *_: self.commands.put(('setup', None))),
                 pystray.MenuItem('終了', lambda *_: self.commands.put(('quit', None))),
@@ -136,6 +139,14 @@ class SnapCalWindows:
         draw.rounded_rectangle((6, 6, 58, 58), radius=12, outline='#54F0BA', width=4)
         draw.line((17, 33, 28, 43, 47, 20), fill='#54F0BA', width=6)
         return img
+
+    @staticmethod
+    def _clipboard_sequence() -> int:
+        """Windows increments this counter on *every* copy, even identical text."""
+        try:
+            return int(ctypes.windll.user32.GetClipboardSequenceNumber())
+        except (AttributeError, OSError):
+            return 0
 
     def _read_clipboard(self) -> str:
         try:
@@ -158,6 +169,13 @@ class SnapCalWindows:
                 break
             if action == 'setup':
                 self.setup()
+            elif action == 'status':
+                messagebox.showinfo(
+                    'SnapCal の状態',
+                    ('監視中' if self.active else '監視停止中')
+                    + '\n\n直近の判定: ' + self.last_decision
+                    + '\n\nコピーした文章の本文は保存していません。',
+                )
             elif action == 'reauthorize':
                 self.reauthorize()
             elif action == 'toggle':
@@ -166,6 +184,7 @@ class SnapCalWindows:
                     self.active = False
                     self.setup()
                 else:
+                    self.last_decision = '監視中' if self.active else '監視停止中'
                     self.notify('コピー監視' + ('を開始しました' if self.active else 'を停止しました'))
             elif action == 'choose':
                 self.choose(payload)
@@ -176,16 +195,40 @@ class SnapCalWindows:
             elif action == 'quit':
                 self._quit()
 
-        value = self._read_clipboard()
-        if value != self.last_clipboard:
+        sequence = self._clipboard_sequence()
+        # Windows explicitly records clipboard *writes*, including when the
+        # user copies exactly the same text a second time. Previous versions
+        # only checked for different text, making repeated tests appear dead.
+        if sequence:
+            changed = sequence != self.last_clipboard_seq
+            self.last_clipboard_seq = sequence
+        else:
+            # Fallback for environments where the Windows sequence API fails.
+            current = self._read_clipboard()
+            changed = current != self.last_clipboard
+        if changed:
+            value = self._read_clipboard()
             self.last_clipboard = value
             if self.active and value:
-                self._handle_text(value)
+                try:
+                    self._handle_text(value)
+                except Exception:
+                    self.last_decision = '予定文の解析エラー'
+                    self.notify('コピー文の解析でエラーが発生しました')
+            elif not self.active:
+                self.last_decision = '監視停止中'
+            else:
+                self.last_decision = 'テキストではないコピー、または空文字'
         self.root.after(self.POLL_MS, self._poll)
 
     def _handle_text(self, text: str) -> None:
         # Parse synchronously: pure deterministic rules, no OCR/LLM/network.
         decision = decide(text, now=datetime.now())
+        self.last_decision = {
+            'auto': '明確な予定を1件検出。カレンダーへ登録処理を開始',
+            'review': '予定候補を検出。候補選択画面を表示',
+            'ignore': '予定として特定できないため登録しません',
+        }.get(decision.mode, '判定できませんでした')
         if decision.mode == 'auto':
             self._enqueue_write(decision.events[0])
         elif decision.mode == 'review':
@@ -226,10 +269,15 @@ class SnapCalWindows:
         if self.choosing:
             return
         self.choosing = True
+        self.last_decision = '候補選択画面を開きました（自動登録はしていません）'
         window = tk.Toplevel(self.root)
         window.title('SnapCal — どの予定ですか？')
         window.geometry(f'450x{min(640, 120 + len(events) * 85)}')
         window.attributes('-topmost', True)
+        # A hidden root and a tray icon can leave a child behind the browser.
+        # Explicitly raise the single review window without showing a bubble.
+        window.lift()
+        window.focus_force()
         heading = (
             '予定として登録しますか？（内容を確認）'
             if reason == 'uncertain_intent'
