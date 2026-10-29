@@ -29,7 +29,8 @@ IGNORE = ('営業時間', '受付時間', '有効期限', '販売期間', '締�
 GENERIC = {
     '日時', '時間', '開催日時', '開催日', '詳細', 'お知らせ', '予約する',
     '申し込む', '戻る', '閉じる', '診察券', '予約日時', '予約確認',
-    '受付', '日時未定', '通知', '予約内容', '予定', 'カレンダー',
+    '受付', '日時未定', '通知', '予約内容', '予定', 'カレンダー', '予約', '診療',
+    'から', 'まで', '開始', '終了', '予約時間', '開始時刻', '終了時刻',
 }
 LABEL = re.compile(r'^(?:タイトル|予定名|イベント名|公演名|予約名|件名)\s*[:：]')
 RELATIVE = re.compile(r'今日|明日|明後日')
@@ -139,10 +140,12 @@ def extract(lines: list[str], now: datetime | None = None) -> list[Event]:
             end = start + timedelta(hours=1)
         if end - start > timedelta(hours=24):
             continue
-        title = _clean_title(text) if date_line == text else ''
+        # Remove only the known range delimiter BETWEEN the two time tokens.
+        # Never modify the word "から" inside real titles such as "からだクリニック".
+        title_text = text
         if len(times) == 2:
-            # Pure separator should never become a title.
-            title = RANGE.sub('', title).strip()
+            title_text = text[:times[0].end()] + ' ' + text[times[1].start():]
+        title = _clean_title(title_text) if date_line == text else ''
         if not _good_title(title):
             for prev in reversed(normalized[max(0, idx - 3):idx]):
                 if prev == date_line or DATE.search(prev) or TIME.search(prev):
