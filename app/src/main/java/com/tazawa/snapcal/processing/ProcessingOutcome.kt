@@ -6,7 +6,7 @@ package com.tazawa.snapcal.processing
  */
 sealed interface ProcessingOutcome {
     data class Added(val contentHash: String) : ProcessingOutcome
-    data class NeedsReview(val detail: String) : ProcessingOutcome
+    data class NeedsReview(val detail: String, val reviewSessionId: String? = null) : ProcessingOutcome
     data class Ignored(val detail: String) : ProcessingOutcome
     data class Failed(val detail: String) : ProcessingOutcome
 }
