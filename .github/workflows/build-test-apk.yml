@@ -21,8 +21,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK command line tools
-        uses: android-actions/setup-android@v3
+      - name: Verify preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" --version
       - name: Install Android 36 build components
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
