@@ -14,6 +14,14 @@ class FakeWidget:
         self.geometry_value = None
         self.protocols = {}
         self.destroyed = False
+        self.lifted = False
+        self.focused = False
+
+    def lift(self):
+        self.lifted = True
+
+    def focus_force(self):
+        self.focused = True
 
     def pack(self, **kwargs):
         pass
@@ -65,6 +73,8 @@ class ChoiceUiTests(TestCase):
         self.app.choose(self.events)
         self.assertEqual(len(self.buttons), 3)
         self.assertFalse(self.window.destroyed)
+        self.assertTrue(self.window.lifted)
+        self.assertTrue(self.window.focused)
         self.buttons[1].command()
         self.app._enqueue_write.assert_called_once_with(self.events[1])
         self.assertTrue(self.window.destroyed)
