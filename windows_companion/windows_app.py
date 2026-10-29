@@ -35,6 +35,7 @@ ROOT = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'SnapCal'
 CLIENT_FILE = ROOT / 'credentials.json'
 TOKEN_FILE = ROOT / 'token.json'
 CALENDAR_ID = os.getenv('SNAPCAL_CALENDAR_ID', 'primary')
+APP_VERSION = '2026.10.29-diagnostic2'
 
 
 def credentials(force_consent: bool = False) -> Credentials:
@@ -172,7 +173,8 @@ class SnapCalWindows:
             elif action == 'status':
                 messagebox.showinfo(
                     'SnapCal の状態',
-                    ('監視中' if self.active else '監視停止中')
+                    'バージョン: ' + APP_VERSION + '\n'
+                    + ('監視中' if self.active else '監視停止中')
                     + '\n\n直近の判定: ' + self.last_decision
                     + '\n\nコピーした文章の本文は保存していません。',
                 )
@@ -365,3 +367,13 @@ if __name__ == '__main__':
     singleton = kernel32.CreateMutexW(None, True, 'Local\\SnapCalWindowsSingleInstance')
     if singleton and kernel32.GetLastError() != 183:  # ERROR_ALREADY_EXISTS
         SnapCalWindows().run()
+    else:
+        # Never fail silently when users try an updated EXE while the old
+        # version is still running: this was indistinguishable from a hang.
+        ctypes.windll.user32.MessageBoxW(
+            None,
+            'SnapCal は既に起動しています。\n'
+            'タスクトレイのSnapCalから「終了」してから新しい版を起動してください。',
+            'SnapCal — 既に実行中',
+            0x40,
+        )
