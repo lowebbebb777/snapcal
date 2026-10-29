@@ -21,15 +21,22 @@ class TextEvidenceExtractor {
             .flatMap { text -> EXCLUSION_KEYWORDS.filter { keyword -> text.contains(keyword) } }
             .toSet()
 
-        val dates = orderedTexts
-            .flatMap(::extractDates)
-
-        val times = orderedTexts
-            .flatMap(::extractTimes)
-
-        val temporalAnchors = orderedLines.filter { line ->
+        val allDates = orderedTexts.flatMap(::extractDates)
+        val times = orderedTexts.flatMap(::extractTimes)
+        val allAnchors = orderedLines.filter { line ->
             extractDates(line.text).isNotEmpty() || CLOCK.containsMatchIn(line.text)
         }
+
+        // A page header, notice or unrelated date must not override the
+        // actual appointment date attached to the only start time.
+        // Never infer a choice if multiple time-bearing events are present.
+        val linkedAnchor = if (allDates.size > 1 && times.size == 1) {
+            orderedLines.filter { extractTimes(it.text).isNotEmpty() }
+                .singleOrNull()
+                ?.takeIf { extractDates(it.text).size == 1 }
+        } else null
+        val dates = linkedAnchor?.let { extractDates(it.text) } ?: allDates
+        val temporalAnchors = if (linkedAnchor != null) listOf(linkedAnchor) else allAnchors
         val titles = selectRegionTitles(orderedLines, temporalAnchors)
 
         return EventCandidate(
