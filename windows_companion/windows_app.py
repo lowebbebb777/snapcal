@@ -192,6 +192,9 @@ class SnapCalWindows:
                 self.choose(payload)
             elif action == 'notify':
                 self.notify(str(payload))
+            elif action == 'result':
+                self.last_decision = str(payload)
+                self.notify(str(payload))
             elif action == 'failed':
                 self.last_submitted.pop(str(payload), None)
             elif action == 'quit':
@@ -249,6 +252,7 @@ class SnapCalWindows:
         if not self.processing.acquire(blocking=False):
             self.notify('処理中です。次の予定は処理終了後にコピーしてください')
             return
+        self.last_decision = '選択した予定のGoogleカレンダー登録を開始しました'
         self.last_submitted[key] = time.monotonic()
         if len(self.last_submitted) > 200:
             oldest = min(self.last_submitted, key=self.last_submitted.get)
@@ -259,11 +263,15 @@ class SnapCalWindows:
         try:
             added = add_to_google_calendar(event)
             msg = 'Googleカレンダーに予定を追加しました' if added else '同じ予定が登録済みです'
-            self.commands.put(('notify', msg))
-        except Exception:
-            # Clear the local key to permit re-trying a temporary auth/network failure.
+            self.commands.put(('result', msg))
+        except Exception as error:
+            # No event details, clipboard text, OAuth tokens or full exception
+            # messages are stored. The error class is diagnostic only.
             self.commands.put(('failed', key))
-            self.commands.put(('notify', '登録できませんでした。Google認証・接続を確認してください'))
+            self.commands.put((
+                'result',
+                '登録失敗（' + type(error).__name__ + '）。Google認証・接続を確認してください',
+            ))
         finally:
             self.processing.release()
 
