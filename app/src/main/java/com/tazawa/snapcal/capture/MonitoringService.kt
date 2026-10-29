@@ -5,8 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
 import com.tazawa.snapcal.notification.NotificationCenter
-import com.tazawa.snapcal.overlay.BubbleOverlayController
-import com.tazawa.snapcal.overlay.BubbleState
 import com.tazawa.snapcal.processing.ProcessingOutcome
 import com.tazawa.snapcal.processing.ProcessingRuntime
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +20,6 @@ class MonitoringService : Service() {
     private val queue = Channel<CapturedImage>(capacity = 8)
     private lateinit var preferences: MonitoringPreferences
     private lateinit var notificationCenter: NotificationCenter
-    private lateinit var overlay: BubbleOverlayController
     private lateinit var runtime: ProcessingRuntime
     private lateinit var observer: ScreenshotObserver
     private var started = false
@@ -31,7 +28,6 @@ class MonitoringService : Service() {
         super.onCreate()
         preferences = MonitoringPreferences(this)
         notificationCenter = NotificationCenter(this).also { it.ensureChannels() }
-        overlay = BubbleOverlayController(this)
         runtime = ProcessingRuntime(this)
         observer = ScreenshotObserver(contentResolver, ::offerScreenshot)
         scope.launch {
@@ -48,7 +44,6 @@ class MonitoringService : Service() {
         if (!started) {
             startForeground(NotificationCenter.MONITORING_NOTIFICATION_ID, notificationCenter.monitoring())
             observer.start()
-            overlay.show(BubbleState.IDLE)
             preferences.enabled = true
             started = true
         }
@@ -63,7 +58,6 @@ class MonitoringService : Service() {
         queue.close()
         serviceJob.cancel()
         serviceJob.invokeOnCompletion { runtime.close() }
-        overlay.hide()
         preferences.enabled = false
         started = false
         super.onDestroy()
@@ -73,7 +67,6 @@ class MonitoringService : Service() {
         if (!queue.trySend(CapturedImage(uri, capturedAt)).isSuccess) {
             scope.launch {
                 if (!destroying) {
-                    overlay.update(BubbleState.FAILED)
                     notificationCenter.postResult(ProcessingOutcome.Failed("スクショ処理待ちがいっぱいです"))
                 }
             }
@@ -81,7 +74,6 @@ class MonitoringService : Service() {
     }
 
     private suspend fun process(capture: CapturedImage) {
-        overlay.update(BubbleState.RECOGNIZING)
         val outcome = try {
             runtime.process(capture.uri, capture.capturedAt)
         } catch (error: CancellationException) {
@@ -90,14 +82,6 @@ class MonitoringService : Service() {
             ProcessingOutcome.Failed("スクショ処理でエラーが発生しました")
         }
         if (destroying) return
-        overlay.update(
-            when (outcome) {
-                is ProcessingOutcome.Added -> BubbleState.ADDED
-                is ProcessingOutcome.NeedsReview -> BubbleState.NEEDS_REVIEW
-                is ProcessingOutcome.Ignored -> BubbleState.IDLE
-                is ProcessingOutcome.Failed -> BubbleState.FAILED
-            },
-        )
         notificationCenter.postResult(outcome)
     }
 
