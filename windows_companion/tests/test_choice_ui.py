@@ -98,6 +98,23 @@ class ChoiceUiTests(TestCase):
         self.app.choose(self.events)
         self.assertEqual(len(self.buttons), 3)
 
+    def test_detail_confirmation_shows_location_memo_and_end_before_click(self):
+        enriched = Event(
+            '定例会議',
+            datetime(2026, 11, 12, 14, 10),
+            datetime(2026, 11, 12, 16, 45),
+            location='福岡支店3階',
+            description='資料持参',
+        )
+        self.app.choose([enriched], reason='details_confirmation')
+        self.app._enqueue_write.assert_not_called()
+        self.assertEqual(len(self.buttons), 2)
+        self.assertIn('場所: 福岡支店3階', self.buttons[0].text)
+        self.assertIn('メモ: 資料持参', self.buttons[0].text)
+        self.assertIn('16:45', self.buttons[0].text)
+        self.buttons[0].command()
+        self.app._enqueue_write.assert_called_once_with(enriched)
+
     def test_window_close_registers_nothing(self):
         self.app.choose(self.events)
         self.window.protocols['WM_DELETE_WINDOW']()
