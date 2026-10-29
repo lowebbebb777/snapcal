@@ -40,6 +40,11 @@
         </service>
 
         <activity
+            android:name=".capture.ReviewChoiceActivity"
+            android:exported="false"
+            android:excludeFromRecents="true" />
+
+        <activity
             android:name=".capture.ShareReceiverActivity"
             android:excludeFromRecents="true"
             android:exported="true"
