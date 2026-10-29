@@ -145,7 +145,7 @@ private fun ShareScreen(
                             ?.reviewSessionId
                         Button(
                             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-                            onClick = if (session != null) {{ onChooseCandidates(session) }} else onClose,
+                            onClick = { if (session != null) onChooseCandidates(session) else onClose() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (session != null) mint else Color(0xFF17352D),
                                 contentColor = if (session != null) background else ink,
