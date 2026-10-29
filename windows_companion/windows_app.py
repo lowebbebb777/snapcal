@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from hashlib import sha256
 import json
+import ctypes
 import os
 from pathlib import Path
 from queue import Empty, Queue
@@ -267,4 +268,11 @@ class SnapCalWindows:
 
 
 if __name__ == '__main__':
-    SnapCalWindows().run()
+    # Prevent two SnapCal copies from monitoring the same clipboard and
+    # competing to write the same calendar event.
+    kernel32 = ctypes.windll.kernel32
+    kernel32.CreateMutexW.argtypes = (ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p)
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    singleton = kernel32.CreateMutexW(None, True, 'Local\\SnapCalWindowsSingleInstance')
+    if singleton and kernel32.GetLastError() != 183:  # ERROR_ALREADY_EXISTS
+        SnapCalWindows().run()
