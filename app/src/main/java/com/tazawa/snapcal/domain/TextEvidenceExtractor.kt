@@ -17,10 +17,6 @@ class TextEvidenceExtractor {
             }
         val orderedTexts = orderedLines.map { it.text }
 
-        val exclusions = orderedTexts
-            .flatMap { text -> EXCLUSION_KEYWORDS.filter { keyword -> text.contains(keyword) } }
-            .toSet()
-
         val allDates = orderedTexts.flatMap(::extractDates)
         val times = orderedTexts.flatMap(::extractTimes)
         val allAnchors = orderedLines.filter { line ->
@@ -37,6 +33,13 @@ class TextEvidenceExtractor {
         } else null
         val dates = linkedAnchor?.let { extractDates(it.text) } ?: allDates
         val temporalAnchors = if (linkedAnchor != null) listOf(linkedAnchor) else allAnchors
+
+        // Ignore exclusion keywords in unrelated page furniture when a unique
+        // scheduled event is explicitly linked to its time on the same line.
+        val exclusionTexts = if (linkedAnchor != null) listOf(linkedAnchor.text) else orderedTexts
+        val exclusions = exclusionTexts
+            .flatMap { text -> EXCLUSION_KEYWORDS.filter { keyword -> text.contains(keyword) } }
+            .toSet()
         val titles = selectRegionTitles(orderedLines, temporalAnchors)
 
         return EventCandidate(
