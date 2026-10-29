@@ -43,6 +43,7 @@ class Event:
     end: datetime
     location: str = ''
     description: str = ''
+    needs_review: bool = False  # Parser-only uncertainty; never sent to Google.
 
     def __post_init__(self) -> None:
         if not self.title or self.end <= self.start:
