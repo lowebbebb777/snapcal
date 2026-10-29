@@ -1,32 +1,73 @@
-# SnapCal Windows companion (prototype)
+# SnapCal for Windows — 文字をコピーするだけで予定登録
 
-Windows 10/11向け。Windows標準の **Win+Shift+S** で切り取った画像を、追加操作なしでローカルOCRしてGoogleカレンダーに登録する試作版です。日時の異なる予定が2件以上ある場合のみ選択画面が表示されます。タスクトレイのアイコンから監視停止・画面全体の解析・終了ができます。
+Windows 10/11の **SnapCal.exe 1つ** に統合しました。画像OCR・Tesseract・Pythonのインストールは不要です。タスクトレイで静かに動作し、`Ctrl+C` などでコピーした文章から予定候補を読み取ります。
 
-> **ソースコード試作段階です。Windows実機での動作とGoogle OAuth接続は未検証です。** Android版とは異なりGoogle Calendar APIのOAuth初期設定が必要です。
+- **確実な予定が1件：** 自動でGoogleカレンダーに登録。コピー以外の操作は不要。
+- **候補が2件以上：** SnapCalの候補選択画面が出るので1件だけクリック。
+- **日時・タイトルが不明：** 何も登録しない（誤登録を防止）。
+- **同じ予定が登録済み：** Googleカレンダーを照会して重複登録を避ける。
+- **画面上の邪魔なバブル：** なし。Windowsの通知領域アイコンだけ。
+- **画像：** Windows版では扱わない。通常の文章コピーに集中。
+- **Android：** 同じSnapCal製品のAndroid APKはスクショ自動登録に対応。
 
-## 初回準備
+## Windows版の入手・起動
 
-1. WindowsにPython 3.11以降とTesseract OCRをインストール。日本語 `jpn.traineddata` と英語 `eng.traineddata` が必要です。インストール先がPATHにない場合は `TESSERACT_CMD` 環境変数を設定します。
-2. `py -m pip install -r requirements.txt`。
-3. Google CloudでGoogle Calendar APIを有効化、OAuth同意画面を設定し、デスクトップアプリ用OAuthクライアントの `credentials.json` をダウンロードします。
-4. `credentials.json` を `%LOCALAPPDATA%\SnapCalWindows\credentials.json` に置きます。
-5. `pythonw.exe windows_app.py` を起動。最初の予定登録時にブラウザのGoogle認証画面が開きます。OAuthトークンは同フォルダの `token.json` に保存されます。ファイルの共有・GitHubへのPushは避けてください。
+1. リポジトリのGitHub Actionsで **Build SnapCal Windows portable EXE** の成功した実行結果を開く。
+2. Artifacts の `SnapCal-Windows-EXE` をダウンロードしてZIPを展開する。
+3. `SnapCal.exe` を起動。Windowsに別の常駐アプリをインストールする必要はありません。
+4. 初回のみGoogle認証を設定。下記参照。設定完了後は「予定文章をコピー」するだけです。
 
-## 利用
+## 初回のみ必要なGoogle認証
 
-- **Win+Shift+S**で範囲を選択 → 1件なら自動登録、複数件なら候補をクリックして登録。
-- トレイアイコンから「画面全体を登録」も使用可能。
-- 終了時刻が明示されていないときは開始1時間後を設定。
-- OCRはローカル処理。予定のタイトルと日時のみ、登録時にGoogle Calendar APIへ送信します。
-- 通知が出ない場合でもGoogleカレンダー上で登録結果を確認してください。
+Googleカレンダーへ**操作ゼロで書き込む**には、Google Calendar APIへのOAuth認証が必須です。SnapCalはユーザーのGoogleパスワードを扱わず、ブラウザでGoogleから許可を得ます。
 
-## 制限
+現時点の試作版では次の1回限りの設定が必要です。
 
-- Windowsでの実機検証は未実施で、インストーラも未作成。
-- OCRにはTesseractの日本語学習データ、Google登録には個別のOAuth初期設定が必須です。
-- 重複登録防止、詳細画面に分散した情報の結合、タイトル選択の汎用性は今後改良が必要です。
-- 本家のSnapCal PRには含めず、個人用ブランチに保管します。
+1. Google Cloud Consoleでプロジェクトを作成し、**Google Calendar API** を有効化。
+2. OAuth同意画面（Google Auth Platform）を設定し、**デスクトップアプリ** 用OAuthクライアントを作成。アプリがテスト状態の場合は自分のGoogleアカウントをテストユーザーへ追加。
+3. ダウンロードした `credentials.json` をSnapCal起動時のファイル選択画面で指定する（手動でコピー先を探す必要はありません）。
+4. 次に予定をコピーするとブラウザが開くので、Googleカレンダーへのアクセスを許可する。
 
-## テスト
+設定は `%LOCALAPPDATA%\SnapCal\` に保存。OAuthのJSON・トークンを他人に渡したりGitへコミットしたりしないでください。Google認証を設定しない間は自動登録されません。
 
-`py -m unittest discover -s tests -v`
+## 文章例
+
+```text
+青空クリニック 11月2日（月）16:50
+```
+
+```text
+会議
+11月4日（水）
+14:30
+```
+
+```text
+青空クリニック
+11月2日（月）16:50
+定例ミーティング
+11月3日（火）18:30
+```
+
+最初の2例は自動登録、最後は候補選択。終了時刻がない場合は1時間後に設定します。
+
+## プライバシーと制限
+
+- コピー内容はメモリ内だけで判定。元の文章・個人情報・コピー履歴をファイル保存しません。
+- 日時とタイトルが明確な場合のみ、予定のタイトル・日時がGoogle Calendar APIに送られます。
+- Googleカレンダーへの登録・重複確認にはネットワーク接続が必要です。
+- さまざまな文章の文脈解釈をAIで行うものではなく、現時点では明示的な日時だけを解析します。
+- Windows GUIの実機操作とGoogle OAuthの実際の接続は**未検証**。GitHub Actionsでは構文・単体テスト・実行ファイル生成を確認します。
+- exeのコード署名は未実施。Windows SmartScreenの注意表示が出る場合があります。
+- 以前の `windows_companion` 画像OCR試作を実行している場合は終了し、**SnapCal.exeだけ**を起動してください。
+
+## ソースからの検証（開発者向け・一般ユーザーには不要）
+
+```powershell
+cd windows_companion
+py -m pip install -r requirements.txt
+py -m unittest discover -s tests -v
+py windows_app.py
+```
+
+元コードのMITライセンスと著作権表示は同梱の `LICENSE` を参照してください。今回の個人用追加開発は本家PRに提出しません。
