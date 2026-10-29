@@ -152,6 +152,8 @@ class SnapCalWindows:
                 self.choose(payload)
             elif action == 'notify':
                 self.notify(str(payload))
+            elif action == 'failed':
+                self.last_submitted.pop(str(payload), None)
             elif action == 'quit':
                 self._quit()
 
