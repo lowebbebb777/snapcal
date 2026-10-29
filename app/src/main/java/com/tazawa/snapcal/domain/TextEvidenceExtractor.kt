@@ -50,7 +50,7 @@ class TextEvidenceExtractor {
         if (sameLine.isNotEmpty()) return sameLine
 
         if (anchors.all { it.bounds != null }) {
-            return lines.mapNotNull { line ->
+            val nearbyTitles = lines.mapNotNull { line ->
                 val title = extractTitle(line.text) ?: return@mapNotNull null
                 val bounds = line.bounds ?: return@mapNotNull null
                 title.takeIf {
@@ -60,6 +60,17 @@ class TextEvidenceExtractor {
                     }
                 }
             }
+            // In appointment screenshots, patient names and UI labels can
+            // appear near the date. Prefer a unique facility name only when
+            // appointment context is explicit; otherwise keep ambiguity.
+            val appointmentContext = lines.any { line ->
+                APPOINTMENT_CONTEXT.any { hint -> line.text.contains(hint) }
+            }
+            if (appointmentContext) {
+                val facilityTitles = nearbyTitles.filter { FACILITY_NAME.containsMatchIn(it) }
+                if (facilityTitles.size == 1) return facilityTitles
+            }
+            return nearbyTitles
         }
 
         // Boundsの無いテスト入力では、各日時行の直前1行だけを候補にする。
@@ -204,12 +215,15 @@ class TextEvidenceExtractor {
         if (LOCATION_PREFIX.containsMatchIn(text)) return null
 
         var remainder = text
+            // Remove weekday markers attached to a date before stripping dates.
+            // Japanese OCR sometimes reads (月) as (定).
+            .replace(DATE_WITH_WEEKDAY, " ")
             .replace(YEAR_SLASH_DATE, " ")
             .replace(YEAR_JAPANESE_DATE, " ")
             .replace(NO_YEAR_SLASH_DATE, " ")
             .replace(NO_YEAR_JAPANESE_DATE, " ")
             .replace(CLOCK, " ")
-            .replace(RANGE_SEPARATOR, " ")
+            .replace(TITLE_RANGE_SEPARATOR, " ")
             .replace(TITLE_LABEL, " ")
             .replace(PUNCTUATION_ONLY_PARTS, " ")
             .trim()
@@ -241,8 +255,19 @@ class TextEvidenceExtractor {
         private val NO_YEAR_SLASH_DATE = Regex("(?<![\\d/])(\\d{1,2})/(\\d{1,2})(?![\\d/])")
         private val YEAR_JAPANESE_DATE = Regex("(?<!\\d)(\\d{4})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日")
         private val NO_YEAR_JAPANESE_DATE = Regex("(?<![\\d年月])(\\d{1,2})月\\s*(\\d{1,2})日")
+        private val DATE_WITH_WEEKDAY = Regex(
+            "(?:\\d{4}年\\s*)?\\d{1,2}月\\s*\\d{1,2}日\\s*[(（][月火水木金土日定][)）]" +
+                "|(?:\\d{4}/)?\\d{1,2}/\\d{1,2}\\s*[(（][月火水木金土日定][)）]",
+        )
+        private val APPOINTMENT_CONTEXT = setOf("診察券", "予約時間", "予約日時", "診療予約")
+        private val FACILITY_NAME = Regex("(?:クリニック|病院|医院|診療所|歯科)$")
         private val CLOCK = Regex("(?:(午前|午後)\\s*)?(\\d{1,2})(?::(\\d{2})|時(?:\\s*(\\d{1,2})分?)?)")
         private val RANGE_SEPARATOR = Regex("(?:〜|～|~|[-‐‑–—−ー]|から|→|まで)")
+        // Preserve the Japanese long vowel ー in names (e.g., ミーティング).
+        private val TITLE_RANGE_SEPARATOR = Regex(
+            "(?:〜|～|~|[-‐-–—−]|→|(?<![\\p{L}\\p{N}])ー(?![\\p{L}\\p{N}])" +
+                "|(?<!\\p{L})から(?!\\p{L})|(?<!\\p{L})まで(?!\\p{L}))",
+        )
         private val LOCATION_PREFIX = Regex("^(?:場所|会場|住所|開催場所)\\s*[:：]")
         private val TITLE_LABEL = Regex("^(?:イベント名|予定|タイトル|公演名)\\s*[:：]")
         private val PUNCTUATION_ONLY_PARTS = Regex("[|｜・:：,，]+")
