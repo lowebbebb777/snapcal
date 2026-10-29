@@ -1,0 +1,51 @@
+name: Build SnapCal Windows portable EXE
+
+on:
+  push:
+    branches:
+      - feature/personal-calendar-ux
+    paths:
+      - 'windows_companion/**'
+      - '.github/workflows/build-windows.yml'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-portable:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: windows_companion
+    steps:
+      - name: Checkout SnapCal
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+      - name: Run deterministic clipboard text parsing tests
+        run: |
+          python -m compileall -q core.py windows_app.py
+          python -m unittest discover -s tests -v
+      - name: Create one portable SnapCal.exe
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name SnapCal --hidden-import=google_auth_oauthlib.flow --hidden-import=googleapiclient.discovery windows_app.py
+          Copy-Item ..\LICENSE dist\LICENSE
+      - name: Upload portable Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnapCal-Windows-EXE
+          path: |
+            windows_companion/dist/SnapCal.exe
+            windows_companion/dist/LICENSE
+            windows_companion/README.md
+          if-no-files-found: error
+          retention-days: 14
