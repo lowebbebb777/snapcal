@@ -49,7 +49,7 @@ class ShareProcessingViewModel(application: Application) : AndroidViewModel(appl
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
-                ProcessingOutcome.Failed
+                ProcessingOutcome.Failed("共有画像の処理に失敗しました")
             } finally {
                 pendingUri = null
             }

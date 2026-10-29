@@ -74,7 +74,7 @@ class MonitoringService : Service() {
             scope.launch {
                 if (!destroying) {
                     overlay.update(BubbleState.FAILED)
-                    notificationCenter.postResult(ProcessingOutcome.Failed)
+                    notificationCenter.postResult(ProcessingOutcome.Failed("スクショ処理待ちがいっぱいです"))
                 }
             }
         }
@@ -87,15 +87,15 @@ class MonitoringService : Service() {
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
-            ProcessingOutcome.Failed
+            ProcessingOutcome.Failed("スクショ処理でエラーが発生しました")
         }
         if (destroying) return
         overlay.update(
             when (outcome) {
                 is ProcessingOutcome.Added -> BubbleState.ADDED
-                ProcessingOutcome.NeedsReview -> BubbleState.NEEDS_REVIEW
-                ProcessingOutcome.Ignored -> BubbleState.IDLE
-                ProcessingOutcome.Failed -> BubbleState.FAILED
+                is ProcessingOutcome.NeedsReview -> BubbleState.NEEDS_REVIEW
+                is ProcessingOutcome.Ignored -> BubbleState.IDLE
+                is ProcessingOutcome.Failed -> BubbleState.FAILED
             },
         )
         notificationCenter.postResult(outcome)
