@@ -22,11 +22,13 @@ from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageDraw
 import pystray
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from core import Event, parse_text
+from core import Event
+from decision import decide
 
 SCOPE = ['https://www.googleapis.com/auth/calendar.events']
 ROOT = Path(os.getenv('LOCALAPPDATA', str(Path.home()))) / 'SnapCal'
@@ -42,14 +44,22 @@ def credentials() -> Credentials:
     if saved and saved.valid:
         return saved
     if saved and saved.expired and saved.refresh_token:
-        saved.refresh(Request())
-    else:
+        try:
+            saved.refresh(Request())
+        except RefreshError:
+            # Google Testing OAuth refresh tokens usually expire after 7 days.
+            # A new browser consent is mandatory; never silently claim renewal.
+            saved = None
+    if not saved or not saved.valid:
         if not CLIENT_FILE.is_file():
             raise FileNotFoundError('Google Calendar OAuth 設定が必要です。トレイから設定してください。')
         saved = InstalledAppFlow.from_client_secrets_file(
             str(CLIENT_FILE), SCOPE,
         ).run_local_server(port=0)
-    TOKEN_FILE.write_text(saved.to_json(), encoding='utf-8')
+    # Replace atomically only after successful renewal or new browser consent.
+    temporary = TOKEN_FILE.with_suffix('.tmp')
+    temporary.write_text(saved.to_json(), encoding='utf-8')
+    os.replace(temporary, TOKEN_FILE)
     return saved
 
 
@@ -108,7 +118,7 @@ class SnapCalWindows:
             'snapcal', self._tray_icon(), 'SnapCal - テキストから予定を登録',
             menu=pystray.Menu(
                 pystray.MenuItem('監視オン／オフ', lambda *_: self.commands.put(('toggle', None))),
-                pystray.MenuItem('Googleカレンダーの初回設定', lambda *_: self.commands.put(('setup', None))),
+                pystray.MenuItem('Google認証の設定 / 再設定', lambda *_: self.commands.put(('setup', None))),
                 pystray.MenuItem('終了', lambda *_: self.commands.put(('quit', None))),
             ),
         )
@@ -167,13 +177,12 @@ class SnapCalWindows:
 
     def _handle_text(self, text: str) -> None:
         # Parse synchronously: pure deterministic rules, no OCR/LLM/network.
-        events = parse_text(text, now=datetime.now())
-        if not events:
-            return
-        if len(events) == 1:
-            self._enqueue_write(events[0])
-        else:
-            self.choose(events)
+        decision = decide(text, now=datetime.now())
+        if decision.mode == 'auto':
+            self._enqueue_write(decision.events[0])
+        elif decision.mode == 'review':
+            self.choose(list(decision.events), reason=decision.reason)
+        # Ordinary copied prose is silently ignored. No Google network call.
 
     def _event_key(self, event: Event) -> str:
         raw = f'{event.title}\0{event.start.isoformat()}\0{event.end.isoformat()}'
@@ -205,7 +214,7 @@ class SnapCalWindows:
         finally:
             self.processing.release()
 
-    def choose(self, events: list[Event]) -> None:
+    def choose(self, events: list[Event], reason: str = 'multiple_events') -> None:
         if self.choosing:
             return
         self.choosing = True
@@ -213,7 +222,12 @@ class SnapCalWindows:
         window.title('SnapCal — どの予定ですか？')
         window.geometry(f'450x{min(640, 120 + len(events) * 85)}')
         window.attributes('-topmost', True)
-        ttk.Label(window, text='登録する予定を1件選択', font=('Yu Gothic UI', 13, 'bold')).pack(pady=14)
+        heading = (
+            '予定として登録しますか？（内容を確認）'
+            if reason == 'uncertain_intent'
+            else '登録する予定を1件選択'
+        )
+        ttk.Label(window, text=heading, font=('Yu Gothic UI', 13, 'bold')).pack(pady=14)
 
         def close() -> None:
             self.choosing = False
