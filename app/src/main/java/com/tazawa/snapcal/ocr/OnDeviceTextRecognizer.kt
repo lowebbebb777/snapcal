@@ -55,8 +55,7 @@ class MlKitJapaneseTextRecognizer(
             suspendCoroutine { continuation ->
                 recognizer.process(image)
                     .addOnSuccessListener { result ->
-                        continuation.resume(
-                            result.textBlocks.flatMap { block ->
+                        val recognizedLines = result.textBlocks.flatMap { block ->
                                 block.lines.mapNotNull { line ->
                                     val box = line.boundingBox ?: return@mapNotNull null
                                     RecognizedLine(
@@ -67,7 +66,9 @@ class MlKitJapaneseTextRecognizer(
                                         bottom = box.bottom,
                                     )
                                 }
-                            },
+                            }
+                        continuation.resume(
+                            SystemStatusBarFilter.filter(recognizedLines, bitmap.width, bitmap.height),
                         )
                     }
                     .addOnFailureListener(continuation::resumeWithException)
