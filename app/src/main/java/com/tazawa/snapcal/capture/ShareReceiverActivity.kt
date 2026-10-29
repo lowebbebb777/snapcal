@@ -59,6 +59,10 @@ class ShareReceiverActivity : ComponentActivity() {
                     }
                 },
                 onClose = ::finish,
+                onChooseCandidates = { id ->
+                    startActivity(ReviewChoiceActivity.intent(this, id))
+                    finish()
+                },
             )
         }
     }
@@ -98,6 +102,7 @@ private fun ShareScreen(
     state: ShareUiState,
     onGrantAndStart: () -> Unit,
     onClose: () -> Unit,
+    onChooseCandidates: (String) -> Unit,
 ) {
     val background = Color(0xFF071311)
     val ink = Color(0xFFEDF7F5)
@@ -135,11 +140,18 @@ private fun ShareScreen(
                         modifier = Modifier.padding(top = 28.dp),
                         color = mint,
                     )
-                    else -> Button(
-                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-                        onClick = onClose,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17352D), contentColor = ink),
-                    ) { Text("閉じる") }
+                    else -> {
+                        val session = ((state as? ShareUiState.Finished)?.outcome as? ProcessingOutcome.NeedsReview)
+                            ?.reviewSessionId
+                        Button(
+                            modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                            onClick = if (session != null) {{ onChooseCandidates(session) }} else onClose,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (session != null) mint else Color(0xFF17352D),
+                                contentColor = if (session != null) background else ink,
+                            ),
+                        ) { Text(if (session != null) "候補から選んで登録" else "閉じる") }
+                    }
                 }
             }
         }
