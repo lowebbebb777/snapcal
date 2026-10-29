@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import re
 
 from core import DATE, TIME, Event, normalize, parse_text
+from details import attach_details, has_explicit_details, normalize_fields
 
 AUTO_CUES = (
     '会議', '打ち合わせ', '打合せ', 'ミーティング', '面談', '面接',
@@ -98,9 +99,16 @@ def decide(text: str, now: datetime | None = None) -> Decision:
     if s.count('http') > 1:
         return Decision('ignore', reason='link_collection')
 
-    parsed = parse_text(s, now=now)
+    prepared = normalize_fields(s)
+    parsed = parse_text(prepared, now=now)
     if not parsed:
-        parsed = _relative_candidates(s, now)
+        # Relative weekdays are per-event lines; labeled details are not part
+        # of the title. Do not concatenate a whole clipboard into one title.
+        parsed = [
+            item for line in prepared.splitlines()
+            for item in _relative_candidates(line, now)
+        ]
+    parsed = attach_details(prepared, parsed)
     # Entire copied paragraphs are not treated as implied events.
     events = tuple(dict.fromkeys(parsed))
     if not events:
@@ -109,6 +117,10 @@ def decide(text: str, now: datetime | None = None) -> Decision:
         return Decision('review', events, 'multiple_events')
 
     event = events[0]
+    # Notes can include sensitive information. Always preview them before
+    # uploading to Google Calendar; never silently ignore malformed fields.
+    if event.description or (has_explicit_details(prepared) and not event.location):
+        return Decision('review', events, 'details_confirmation')
     has_auto_cue = any(cue in event.title for cue in AUTO_CUES)
     short_text = len(s) <= 220 and s.count('\n') <= 3
     prose = any(hint in s for hint in PROSE_HINTS)
