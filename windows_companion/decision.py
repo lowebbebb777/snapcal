@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import re
 
 from core import DATE, TIME, Event, normalize, parse_text
-from details import attach_details, has_explicit_details, normalize_fields
+from details import attach_details, has_explicit_details, normalize_fields, without_fields
 
 AUTO_CUES = (
     '会議', '打ち合わせ', '打合せ', 'ミーティング', '面談', '面接',
@@ -100,12 +100,13 @@ def decide(text: str, now: datetime | None = None) -> Decision:
         return Decision('ignore', reason='link_collection')
 
     prepared = normalize_fields(s)
-    parsed = parse_text(prepared, now=now)
+    candidate_text = without_fields(prepared)
+    parsed = parse_text(candidate_text, now=now)
     if not parsed:
         # Relative weekdays are per-event lines; labeled details are not part
         # of the title. Do not concatenate a whole clipboard into one title.
         parsed = [
-            item for line in prepared.splitlines()
+            item for line in candidate_text.splitlines()
             for item in _relative_candidates(line, now)
         ]
     parsed = attach_details(prepared, parsed)
