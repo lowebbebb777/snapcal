@@ -20,7 +20,6 @@ FIELD = re.compile(
 INLINE_BOUNDARY = re.compile(
     r'[ \t]+(?=(?:' + LOCATION_LABEL + '|' + NOTE_LABEL + r')\s*[:：])'
 )
-DATE_TIME_LABELS = re.compile(r'^(?:日時|日付|開始日時|終了日時)\s*[:：]\s*')
 MAX_LOCATION = 120
 MAX_NOTE = 200
 
@@ -32,6 +31,14 @@ def normalize_fields(text: str) -> str:
     accidentally absorb the location text into the event title.
     """
     return INLINE_BOUNDARY.sub('\n', text)
+
+
+def without_fields(preprocessed_text: str) -> str:
+    """Never let a labeled note containing another date become a fake event."""
+    return '\n'.join(
+        line for line in preprocessed_text.splitlines()
+        if not FIELD.match(normalize(line))
+    )
 
 
 def _event_anchors(lines: list[str]) -> list[int]:
@@ -95,6 +102,7 @@ def attach_details(preprocessed_text: str, events: list[Event]) -> list[Event]:
 
 
 def has_explicit_details(text: str) -> bool:
-    return bool(FIELD.search(normalize_fields(text))) if '\n' not in text else any(
-        FIELD.match(normalize(line)) for line in normalize_fields(text).splitlines()
+    return any(
+        FIELD.match(normalize(line))
+        for line in normalize_fields(text).splitlines()
     )
